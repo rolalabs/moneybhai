@@ -10,6 +10,19 @@ from googleapiclient.discovery import build
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 def authenticate_gmail():
+    """
+    Authenticates and returns a Gmail API service instance using OAuth 2.0.
+    This function checks for existing user credentials stored in 'token.json'.
+    If valid credentials are found, they are used to authenticate the user.
+    If credentials are missing, expired, or invalid, the function initiates the OAuth 2.0 flow
+    using the client secrets from 'credentials.json' and saves the new credentials to 'token.json'.
+    Returns:
+        googleapiclient.discovery.Resource: An authorized Gmail API service instance.
+    Raises:
+        FileNotFoundError: If 'credentials.json' is not found when initiating the OAuth flow.
+        google.auth.exceptions.RefreshError: If the credentials cannot be refreshed.
+    """
+
     creds = None
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)

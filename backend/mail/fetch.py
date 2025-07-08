@@ -1,5 +1,6 @@
+from googleapiclient.discovery import Resource
 
-def fetch_emails(service, max_results=100):
+def fetch_emails(service: Resource, max_results=100):
     results = service.users().messages().list(userId='me', maxResults=max_results).execute()
     messages = results.get('messages', [])
     message_list = []
