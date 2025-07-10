@@ -1,26 +1,21 @@
-from logging import log
 import time
 from datetime import datetime
 
 from backend.mail.auth import authenticate_gmail
 from backend.mail.fetch import fetch_emails
+from backend.utils.log import log
 
-def run_email_watcher(poll_every_sec=60):
-    log("Starting Gmail polling service...")
+def run_email_watcher(poll_every_sec=5):
+    log.info("Starting Gmail polling service...")
 
     last_checked = datetime.utcnow()
     gmail_service = authenticate_gmail()
 
-    while True:
-        try:
-            emails = get_new_emails(since=last_checked)
-            message_list = fetch_emails(gmail_service, max_results=100)
-            log(f"Found {len(message_list)} new emails")
-            if message_list:
-                structured = extract_transactions(message_list)
-                insert_transactions(structured)
-                last_checked = datetime.utcnow()
-        except Exception as e:
-            log(f"Error in watcher loop: {e}")
+    try:
+        fetch_emails(gmail_service)
+    except Exception as e:
+        log.exception(f"Error in watcher loop: {e}")
 
-        time.sleep(poll_every_sec)
+    time.sleep(poll_every_sec)
+
+run_email_watcher()
