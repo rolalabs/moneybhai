@@ -1,3 +1,2 @@
-from auth import *
-from fetch import *
-from watcher import *
+from backend.mail.auth import *
+from backend.mail.fetch import *

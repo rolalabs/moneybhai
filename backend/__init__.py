@@ -1,2 +1,2 @@
-from mail import *
-from utils import *
+from backend.mail import *
+from backend.utils import *
