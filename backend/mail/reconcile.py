@@ -16,7 +16,7 @@ def fetch_emails_with_empty_id():
     """
     Fetch all emails where emailId is empty.
     """
-    return DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.emailId == '').all()
+    return DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.emailId.is_(None)).all()
 
 def is_valid_email(email):
     """
@@ -40,16 +40,15 @@ def populate_email_ids():
     update_count = 0
     for email in emails:
         if email.emailSender and is_valid_email(email.emailSender):
-            email.emailId = email.emailSender
+            email.emailId = email.emailSender.lower()
             update_count += 1
             log.info(f"Updating emailId for emailSender: {email.emailSender} in email ID: {email.id}")
+
             # Update the email in the database
-            stmt = update(EmailMessageORM).where(EmailMessageORM.id == email.id).values(emailId=email.emailSender)
+            stmt = update(EmailMessageORM).where(EmailMessageORM.id == email.id).values(emailId=email.emailId)
             DB_SESSION.execute(stmt)
             # Commit the changes to the database
             DB_SESSION.commit()
         else:
             log.error(f"Invalid email format for emailSender: {email.emailSender} in email ID: {email.id}")
     
-
-populate_email_ids()
