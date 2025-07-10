@@ -1,5 +1,6 @@
 import base64
 from datetime import datetime, timedelta
+import time
 import psycopg2
 from sqlalchemy.exc import IntegrityError
 from backend.utils.log import log
@@ -9,6 +10,9 @@ from googleapiclient.discovery import Resource
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.mail.model import EmailMessage, EmailMessageORM
 from backend.utils.connectors import DB_SESSION
+from sqlalchemy.dialects.postgresql import insert
+
+
 
 def extract_email_body(payload):
     # Recursive function to handle multipart emails
@@ -32,7 +36,7 @@ def extract_email_body(payload):
     return "(No body found)"
 
 
-def fetch_email_threads_list(service: Resource, next_page_token=None, max_results=100):
+def fetch_email_threads_list(service: Resource, next_page_token=None, max_results=100, query=None) -> tuple:
     """
     Fetches a list of email threads from the Gmail API.
     
@@ -46,7 +50,8 @@ def fetch_email_threads_list(service: Resource, next_page_token=None, max_result
     response = service.users().threads().list(
         userId='me',
         pageToken=next_page_token,
-        maxResults=max_results
+        maxResults=max_results,
+        q=query
     ).execute()
 
     threads = response.get('threads', [])
@@ -54,9 +59,12 @@ def fetch_email_threads_list(service: Resource, next_page_token=None, max_result
 
     return threads, next_page_token
 
-def fetch_message_details(service, msg_id):
+def fetch_message_details(service, msg_id) -> dict:
     try:
         msg_data = service.users().messages().get(userId='me', id=msg_id).execute()
+        if not msg_data:
+            log.error(f"Message with ID {msg_id} not found.")
+            return None
         emailSender: str = ''
         emailId: str = ''
         date_time: datetime = None
@@ -72,15 +80,14 @@ def fetch_message_details(service, msg_id):
             if header.get('name') == 'Date':
                 date_time = parser.parse(header.get('value', ''))
 
-
-        mail_data = EmailMessageORM(
-            thread_id=msg_data.get('threadId', ''),
-            id=msg_data.get('id', ''),
-            snippet=msg_data.get('snippet', ''),
-            date_time=date_time,
-            emailSender=emailSender,
-            emailId=emailId
-        )
+        mail_data = {
+            'thread_id': msg_data.get('threadId', ''),
+            'id': msg_data.get('id', ''),
+            'snippet': msg_data.get('snippet', ''),
+            'date_time': date_time,
+            'emailSender': emailSender,
+            'emailId': emailId
+        }
         return mail_data
     except Exception as e:
         print(f"Error fetching message {msg_id}: {e}")
@@ -94,51 +101,57 @@ def process_mails_and_insert_to_db(service: Resource, message_list = []):
         message_list (list): List of email messages to process.
     """
     messages_to_insert = []
+    for msg in message_list:
+        result = fetch_message_details(service, msg['id'])
+        if result:
+            messages_to_insert.append(result)
 
-    with ThreadPoolExecutor() as executor:
-            
-            # Prepare futures for fetching message details
-            futures = [
-                executor.submit(fetch_message_details, service, msg['id'])
-                for msg in message_list
-            ]
+    try:
 
-            # Collect results as they complete
-            log.info("Processing emails in parallel...")
-            log.info(f"Total emails to process: {len(futures)}")
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    messages_to_insert.append(result)
+        insert_statement = insert(EmailMessageORM).values(messages_to_insert)
 
-            # Insert messages into the database
-            log.info(f"Inserting {len(messages_to_insert)} emails into the database...")
-            try:
-                DB_SESSION.add_all(messages_to_insert)
-                DB_SESSION.commit()
-            except IntegrityError as e:
-                DB_SESSION.rollback()
-                if isinstance(e.orig, psycopg2.errors.UniqueViolation):
-                    log.error("❌ Duplicate entry for a unique field!")
-                    # You can raise custom error or skip
-                else:
-                    raise  # re-raise if it's another type of IntegrityError
+        # For PostgreSQL/SQLite, specify the unique constraint column(s)
+        # Replace 'id' with your actual unique column or (col1, col2) for composite unique constraints
+        on_conflict_statement = insert_statement.on_conflict_do_nothing(
+            index_elements=[EmailMessageORM.thread_id] # Or other unique columns
+        )
+        DB_SESSION.execute(on_conflict_statement)
+        DB_SESSION.commit()
+    except IntegrityError as e:
+        DB_SESSION.rollback()
+        if isinstance(e.orig, psycopg2.errors.UniqueViolation):
+            log.error("❌ Duplicate entry for a unique field!")
+            # You can raise custom error or skip
+        else:
+            raise  # re-raise if it's another type of IntegrityError
 
 def fetch_emails(service: Resource):
     messages = []
-    after_date = (datetime.utcnow() - timedelta(days=30)).date().isoformat()
-    query = f"after:{after_date}"
+
     next_page_token = None
+
+    # read the last processed email ID from the database
+    last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.asc()).first()
+    if last_processed_email:
+        # get its time
+        last_processed_time = last_processed_email.date_time + timedelta(days=1)
+        last_processed_time = last_processed_time.strftime('%Y/%m/%d')
+        # filter from that time onwards
+        query = f"before:{last_processed_time}"
 
     while True:
         start_time = datetime.now()
-        threads, next_page_token = fetch_email_threads_list(service, next_page_token, 100)
+        threads, next_page_token = fetch_email_threads_list(service, next_page_token, 100, query=query)
         log.info(f"✅ Found {len(threads)} emails \n")
 
+        if threads is None or len(threads) == 0:
+            log.info("No more emails to process.")
+            break
         process_mails_and_insert_to_db(service, threads)
 
 
         log.info("Processing time: %s seconds", (datetime.now() - start_time).total_seconds())
+        log.info(next_page_token)
 
         if not next_page_token:
             break

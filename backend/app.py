@@ -16,6 +16,5 @@ def run_email_watcher(poll_every_sec=5):
     except Exception as e:
         log.exception(f"Error in watcher loop: {e}")
 
-    time.sleep(poll_every_sec)
 
 run_email_watcher()
