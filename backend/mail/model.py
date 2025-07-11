@@ -1,44 +1,15 @@
-from sqlalchemy import Column, String, Text, Integer, DateTime
-from typing import List, Optional
+from datetime import datetime
+from sqlalchemy import Column, String, Text, DateTime
 from pydantic import BaseModel
 from backend.utils.connectors import DB_BASE, DB_SESSION
 
-class Header(BaseModel):
-    name: str
-    value: str
-
-
-class Body(BaseModel):
-    size: int
-    data: Optional[str] = None
-
-
-class Part(BaseModel):
-    partId: str
-    mimeType: str
-    filename: str
-    headers: Optional[List[Header]] = None
-    body: Body
-
-
-class Payload(BaseModel):
-    partId: str
-    mimeType: str
-    filename: str
-    headers: List[Header]
-    body: Body
-    parts: Optional[List[Part]] = None
-
-
 class EmailMessage(BaseModel):
+    thread_id: str
     id: str
-    threadId: str
-    labelIds: List[str]
     snippet: str
-    payload: Payload
-    sizeEstimate: int
-    historyId: str
-    internalDate: str
+    date_time: datetime
+    emailSender: str
+    emailId: str
 
 
 class EmailMessageORM(DB_BASE):
@@ -52,4 +23,4 @@ class EmailMessageORM(DB_BASE):
     emailId = Column(String(128))
 
 
-DB_BASE.metadata.create_all(DB_SESSION.bind)  # Create tables if they don't exist
+# DB_BASE.metadata.create_all(DB_SESSION.bind)  # Create tables if they don't exist
