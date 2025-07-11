@@ -167,8 +167,8 @@ def fetch_emails_from_database() -> list[EmailMessage]:
         list: List of EmailMessage objects.
     """
     emails_serialized_list = []
-    emails_list = DB_SESSION.query(EmailMessageORM).all()
-
+    # fetch 10 emails from the database where isGeminiParsed is False
+    emails_list = DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.isGeminiParsed.is_(False)).limit(100).all()
     if not emails_list:
         log.info("No emails found in the database.")
         return []
