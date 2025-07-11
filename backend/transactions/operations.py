@@ -2,7 +2,7 @@ import re
 import json
 from dateutil import parser
 from backend.mail.model import EmailMessage
-from backend.mail.operations import mark_email_as_transaction
+from backend.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
 from backend.transactions.models import Transaction, TransactionORM
 from backend.utils.connectors import DB_SESSION, MODEL
 from backend.utils.log import log
@@ -28,6 +28,7 @@ def process_emails(emails_list: list[EmailMessage]):
 
         snippet = f"Thread-ID {id}:\n{snippet}"
         message_to_parse_list.append(snippet)
+        mark_email_as_gemini_parsed(msg.thread_id)
 
     model_response = MODEL(str(message_to_parse_list), list[Transaction])
     transactions_json = json.loads(model_response)
