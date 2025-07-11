@@ -158,5 +158,17 @@ def fetch_emails(service: Resource):
 
 
     log.info(f"✅ Processed {len(messages)} emails in total.")
-    
 
+def fetch_emails_from_database() -> list[EmailMessage]:
+    """
+    Fetches all email messages from the database.
+    
+    Returns:
+        list: List of EmailMessage objects.
+    """
+    try:
+        emails = DB_SESSION.query(EmailMessageORM).all()
+        return [EmailMessage(**email.__dict__) for email in emails]
+    except Exception as e:
+        log.error(f"Error fetching emails from database: {e}")
+        return []

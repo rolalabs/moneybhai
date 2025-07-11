@@ -28,10 +28,13 @@ def insert_emails(transaction_list: list[Transaction], message_dict_list: dict):
             emailId=email_details.emailId,
             date_time=email_details.date_time,
         )
-        DB_SESSION.add(txn)
-
-    DB_SESSION.commit()
-    DB_SESSION.close()
+        # wrap around try catch to handle failures
+        try:
+            DB_SESSION.add(txn)
+            DB_SESSION.commit()
+        except Exception as e:
+            DB_SESSION.rollback()
+            print(f"Error inserting transactions: {e}")
 
 def process_emails(emails_list: list[EmailMessage]):
 
