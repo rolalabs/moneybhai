@@ -131,13 +131,13 @@ def fetch_emails(service: Resource):
     next_page_token = None
 
     # read the last processed email ID from the database
-    last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.asc()).first()
+    last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.desc()).first()
     if last_processed_email:
         # get its time
-        last_processed_time = last_processed_email.date_time + timedelta(days=1)
+        last_processed_time = last_processed_email.date_time - timedelta(days=1)
         last_processed_time = last_processed_time.strftime('%Y/%m/%d')
         # filter from that time onwards
-        query = f"before:{last_processed_time}"
+        query = f"after:{last_processed_time}"
 
     while True:
         start_time = datetime.now()
