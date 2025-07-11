@@ -166,9 +166,26 @@ def fetch_emails_from_database() -> list[EmailMessage]:
     Returns:
         list: List of EmailMessage objects.
     """
+    emails_serialized_list = []
+    emails_list = DB_SESSION.query(EmailMessageORM).all()
+
+    if not emails_list:
+        log.info("No emails found in the database.")
+        return []
+    
     try:
-        emails = DB_SESSION.query(EmailMessageORM).all()
-        return [EmailMessage(**email.__dict__) for email in emails]
+        for email in emails_list:
+            # Convert ORM object to Pydantic model
+            email_serialized = EmailMessage(
+                thread_id=email.thread_id,
+                id=email.id,
+                snippet=email.snippet,
+                date_time=email.date_time,
+                emailSender=email.emailSender,
+                emailId=email.emailId
+            )
+            emails_serialized_list.append(email_serialized)
+        return emails_serialized_list
     except Exception as e:
         log.error(f"Error fetching emails from database: {e}")
         return []
