@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Text, DateTime, Boolean
+from sqlalchemy import Column, String, Text, DateTime, Boolean, JSON
 from pydantic import BaseModel
 from backend.utils.connectors import DB_BASE, DB_SESSION
 
@@ -12,6 +12,7 @@ class EmailMessage(BaseModel):
     emailId: str
     source: str = "ss.saswatsahoo@gmail"
     isTransaction: bool = False
+    isGeminiParsed: bool = False  
 
 
 class EmailMessageORM(DB_BASE):
@@ -25,6 +26,7 @@ class EmailMessageORM(DB_BASE):
     emailId = Column(String(128))
     source = Column(String(128), default="ss.saswatsahoo@gmail")
     isTransaction = Column(Boolean, default=False)
+    isGeminiParsed = Column(Boolean, default=False)
 
 
 # DB_BASE.metadata.create_all(DB_SESSION.bind)  # Create tables if they don't exist
