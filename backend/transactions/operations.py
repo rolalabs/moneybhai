@@ -1,18 +1,20 @@
 import re
+import json
 from dateutil import parser
-from backend.transactions.models import TransactionORM
-from backend.utils.connectors import DB_SESSION
+from backend.mail.model import EmailMessage
+from backend.transactions.models import Transaction, TransactionORM
+from backend.utils.connectors import DB_SESSION, MODEL
 
 def get_last_transaction():
     last_record = DB_SESSION.query(TransactionORM).order_by(TransactionORM.id.desc()).first()
     DB_SESSION.close()
     return last_record
 
-def insert_emails(transaction_list: list):
+def insert_emails(transaction_list: list[Transaction], message_dict_list: dict):
 
 
     for t in transaction_list:
-        
+        email_details: EmailMessage = message_dict_list.get(t.thread_id, None)
         txn = TransactionORM(
             id=t.thread_id, 
             amount=t.amount,
@@ -21,48 +23,37 @@ def insert_emails(transaction_list: list):
             source_type=t.source_type,
             destination=t.destination,
             mode=t.mode,
-            reference_number=t.reference_number
+            reference_number=t.reference_number,
+            emailSender=email_details.emailSender,
+            emailId=email_details.emailId,
+            date_time=email_details.date_time,
         )
+        DB_SESSION.add(txn)
 
-        mail_data = message_dict_list.get(t.thread_id, {})
+    DB_SESSION.commit()
+    DB_SESSION.close()
 
-        for header in mail_data.get('payload', {}).get('headers', []):
-            if header.get('name') == 'From':
-                from_header = header.get('value', '')
-                match = re.match(r'^(.*?)(?:\s*<([^>]+)>)?$', from_header)
-                if match:
-                    txn.emailSender = match.group(1).strip()
-                    txn.emailId = match.group(2) if match.group(2) else None
+def process_emails(emails_list: list[EmailMessage]):
 
-            if header.get('name') == 'Date':
-                txn.date_time = parser.parse(header.get('value', ''))
-
-        session.add(txn)
-
-    session.commit()
-    session.close()
-
-def process_emails(message_list: list):
-
-    message_dict_list = {msg['id']: msg for msg in message_list}
+    message_dict_list = {msg.id: msg for msg in emails_list}
     message_to_parse_list = []
 
-    for msg in message_list[10:20]:
-        id = msg.get('id', '')
-        snippet = msg.get('snippet', '')
-        headers = msg.get('payload', {}).get('headers', [])
-        additional_data = ""
-        if snippet:
-            # snippet = f"{from_details}\n{date_details}\n{snippet}"
-            snippet = f"Thread-ID {id}:\n{snippet}"
-            message_to_parse_list.append(snippet)
+    # Prepare messages for parsing
+    for msg in emails_list:
+        id = msg.id
+        snippet = msg.snippet
 
-    import json
+        if not snippet:
+            continue
 
-    model_response = model(str(message_to_parse_list), list[Transaction])
+        snippet = f"Thread-ID {id}:\n{snippet}"
+        message_to_parse_list.append(snippet)
+
+    model_response = MODEL(str(message_to_parse_list), list[Transaction])
     transactions_json = json.loads(model_response)
 
     transaction_list: list[Transaction] = []
     for transaction in transactions_json:
         transaction_list.append(Transaction(**transaction))
-    transaction_list
+    
+    insert_emails(transaction_list, message_dict_list)
