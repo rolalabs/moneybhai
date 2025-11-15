@@ -121,7 +121,7 @@ def process_emails(emails_list: list[EmailMessage]):
         finally:
             # Mark the email as a transaction
             mark_email_as_transaction(email_details.id)
-            mark_email_as_gemini_parsed(msg.id)
+            mark_email_as_gemini_parsed(email_details.id)
     
     log.info(f"Processed {count} transactions from {len(emails_list)} emails.")
     DB_SESSION.close()
