@@ -39,4 +39,4 @@ def fetch_and_process_emails():
 
         log.info(f"Processed {len(emails_list)} emails in {time.time() - start_time:.2f} seconds.")
 
-# fetch_and_process_emails()
+fetch_and_process_emails()

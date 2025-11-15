@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Float, DateTime
 from backend.utils.connectors import DB_BASE, DB_SESSION
 
 class Transaction(BaseModel):
-    thread_id: str = None
+    id: str = None
     amount: float = None
     transaction_type: str = None
     source_identifier: str = None

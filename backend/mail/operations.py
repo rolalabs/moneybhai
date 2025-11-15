@@ -52,26 +52,26 @@ def populate_email_ids():
         else:
             log.error(f"Invalid email format for emailSender: {email.emailSender} in email ID: {email.id}")
     
-def mark_email_as_transaction(thread_id: str):
+def mark_email_as_transaction(id: str):
     """
     Update the isTransaction field for emails based on their content.
     """
-    email = DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.thread_id == thread_id).first()
+    email = DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.id == id).first()
     if email:
         email.isTransaction = True
         DB_SESSION.commit()
-        log.info(f"Marked email as transaction for thread_id: {thread_id}")
+        log.info(f"Marked email as transaction for id: {id}")
     else:
-        log.error(f"Email not found for thread_id: {thread_id}")
+        log.error(f"Email not found for id: {id}")
 
-def mark_email_as_gemini_parsed(thread_id: str):
+def mark_email_as_gemini_parsed(id: str):
     """
     Update the isGeminiParsed field for emails based on their content.
     """
-    email = DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.thread_id == thread_id).first()
+    email = DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.id == id).first()
     if email:
         email.isGeminiParsed = True
         DB_SESSION.commit()
-        log.info(f"Marked email as gemini parsed for thread_id: {thread_id}")
+        log.info(f"Marked email as gemini parsed for id: {id}")
     else:
-        log.error(f"Email not found for thread_id: {thread_id}")
+        log.error(f"Email not found for id: {id}")

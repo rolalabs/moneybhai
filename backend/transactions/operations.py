@@ -22,7 +22,7 @@ def generate_transactions_list_from_emails(message_to_parse_list: list[str]) -> 
     * The response must begin with `[` and end with `]`.
 
     **Extracted Fields and Constraints:**
-    * `thread_id` (string): Unique identifier for the message. This maps to the "Thread-ID" in the message.
+    * `id` (string): Unique identifier for the message. This maps to the "ID" in the message.
     * `amount` (number): Numeric value of the transaction. Do not include currency symbols.
     * `transaction_type` (string): **Strictly** one of: "debit" or "credit".
     * `source_identifier` (string): Account number, card number, or UPI ID from which money was deducted or into which money was received.
@@ -43,7 +43,7 @@ def generate_transactions_list_from_emails(message_to_parse_list: list[str]) -> 
     ```json
     [
     {
-        "thread_id": "1234567890abcdef",
+        "id": "1234567890abcdef",
         "amount": 65.00,
         "transaction_type": "debit",
         "source_identifier": "1531",
@@ -78,12 +78,11 @@ def process_emails(emails_list: list[EmailMessage]):
     for msg in emails_list:
         id = msg.id
         snippet = msg.snippet
-        mark_email_as_gemini_parsed(msg.thread_id)
 
         if not snippet:
             continue
 
-        snippet = f"Thread-ID {id}:\n{snippet}"
+        snippet = f"ID {id}:\n{snippet}"
         message_to_parse_list.append(snippet)
         # mark_email_as_gemini_parsed(msg.thread_id)
 
@@ -97,9 +96,9 @@ def process_emails(emails_list: list[EmailMessage]):
     count = 0
     for transaction in transactions_json:
         t: Transaction = Transaction(**transaction)
-        email_details: EmailMessage = message_dict_list.get(t.thread_id, None)
+        email_details: EmailMessage = message_dict_list.get(t.id, None)
         txn = TransactionORM(
-            id=t.thread_id, 
+            id=t.id, 
             amount=t.amount,
             transaction_type=t.transaction_type,
             source_identifier=t.source_identifier,
@@ -121,7 +120,8 @@ def process_emails(emails_list: list[EmailMessage]):
             print(f"Error inserting transactions: {e}")
         finally:
             # Mark the email as a transaction
-            mark_email_as_transaction(email_details.thread_id)
+            mark_email_as_transaction(email_details.id)
+            mark_email_as_gemini_parsed(msg.id)
     
     log.info(f"Processed {count} transactions from {len(emails_list)} emails.")
     DB_SESSION.close()
