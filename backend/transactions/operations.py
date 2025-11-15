@@ -91,6 +91,8 @@ def process_emails(emails_list: list[EmailMessage]):
 
     if not transactions_json:
         print("No valid transactions found.")
+        for msg in emails_list:
+            mark_email_as_gemini_parsed(msg.id)
         return
 
     count = 0
