@@ -144,6 +144,8 @@ def fetch_emails(service: Resource):
 
     next_page_token = None
 
+    log.info("Starting to fetch emails from Gmail...")
+
     # read the last processed email ID from the database
     last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.desc()).first()
     if last_processed_email:
@@ -156,6 +158,7 @@ def fetch_emails(service: Resource):
     while True:
         start_time = datetime.now()
         # threads, next_page_token = fetch_email_threads_list(service, next_page_token, 100, query=query)
+        log.info("Fetching emails with query: %s", query)
         messages, next_page_token = fetch_emails_messages_list(
             service=service, 
             next_page_token=next_page_token, 
