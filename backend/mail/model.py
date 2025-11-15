@@ -18,8 +18,8 @@ class EmailMessage(BaseModel):
 class EmailMessageORM(DB_BASE):
     __tablename__ = "emails"
 
-    thread_id = Column(String, primary_key=True)
-    id = Column(String)
+    id = Column(String, primary_key=True)
+    thread_id = Column(String)
     snippet = Column(Text)
     date_time = Column(DateTime)
     emailSender = Column(String(128))

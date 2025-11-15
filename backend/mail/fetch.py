@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.mail.model import EmailMessage, EmailMessageORM
 from backend.utils.connectors import DB_SESSION
 from sqlalchemy.dialects.postgresql import insert
+from datetime import datetime
 
 
 
@@ -35,6 +36,19 @@ def extract_email_body(payload):
             return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
     return "(No body found)"
 
+def fetch_emails_messages_list(service: Resource, query, next_page_token=None, max_results=100) -> tuple:
+    results = service.users().messages().list(
+        userId='me', 
+        maxResults=max_results, 
+        q=query,
+        pageToken=next_page_token,
+    ).execute()
+    messages = results.get('messages', [])
+    message_list = []
+    for msg in messages:
+        msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
+        message_list.append(msg_data)
+    return message_list, results.get('nextPageToken')
 
 def fetch_email_threads_list(service: Resource, next_page_token=None, max_results=100, query=None) -> tuple:
     """
@@ -59,12 +73,12 @@ def fetch_email_threads_list(service: Resource, next_page_token=None, max_result
 
     return threads, next_page_token
 
-def fetch_message_details(service, msg_id) -> dict:
+def fetch_message_details(msg_data, msg_id) -> dict:
     try:
-        msg_data = service.users().messages().get(userId='me', id=msg_id).execute()
-        if not msg_data:
-            log.error(f"Message with ID {msg_id} not found.")
-            return None
+        # msg_data = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
+        # if not msg_data:
+        #     log.error(f"Message with ID {msg_id} not found.")
+        #     return None
         emailSender: str = ''
         emailId: str = ''
         date_time: datetime = None
@@ -93,7 +107,7 @@ def fetch_message_details(service, msg_id) -> dict:
         print(f"Error fetching message {msg_id}: {e}")
         return None
 
-def process_mails_and_insert_to_db(service: Resource, message_list = []):
+def process_mails_and_insert_to_db(message_list = []):
     """
     Processes a list of email messages and inserts them into the database.
     
@@ -102,7 +116,7 @@ def process_mails_and_insert_to_db(service: Resource, message_list = []):
     """
     messages_to_insert = []
     for msg in message_list:
-        result = fetch_message_details(service, msg['id'])
+        result = fetch_message_details(msg, msg['id'])
         if result:
             messages_to_insert.append(result)
 
@@ -113,7 +127,7 @@ def process_mails_and_insert_to_db(service: Resource, message_list = []):
         # For PostgreSQL/SQLite, specify the unique constraint column(s)
         # Replace 'id' with your actual unique column or (col1, col2) for composite unique constraints
         on_conflict_statement = insert_statement.on_conflict_do_nothing(
-            index_elements=[EmailMessageORM.thread_id] # Or other unique columns
+            index_elements=[EmailMessageORM.id] # Or other unique columns
         )
         DB_SESSION.execute(on_conflict_statement)
         DB_SESSION.commit()
@@ -134,20 +148,26 @@ def fetch_emails(service: Resource):
     last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.desc()).first()
     if last_processed_email:
         # get its time
-        last_processed_time = last_processed_email.date_time - timedelta(days=1)
+        last_processed_time = last_processed_email.date_time - timedelta(days=3)
         last_processed_time = last_processed_time.strftime('%Y/%m/%d')
         # filter from that time onwards
         query = f"after:{last_processed_time}"
 
     while True:
         start_time = datetime.now()
-        threads, next_page_token = fetch_email_threads_list(service, next_page_token, 100, query=query)
-        log.info(f"✅ Found {len(threads)} emails \n")
+        # threads, next_page_token = fetch_email_threads_list(service, next_page_token, 100, query=query)
+        messages, next_page_token = fetch_emails_messages_list(
+            service=service, 
+            next_page_token=next_page_token, 
+            max_results=100, 
+            query=query
+        )
+        log.info(f"✅ Found {len(messages)} emails \n")
 
-        if threads is None or len(threads) == 0:
+        if messages is None or len(messages) == 0:
             log.info("No more emails to process.")
             break
-        process_mails_and_insert_to_db(service, threads)
+        process_mails_and_insert_to_db(messages)
 
 
         log.info("Processing time: %s seconds", (datetime.now() - start_time).total_seconds())
@@ -168,7 +188,16 @@ def fetch_emails_from_database() -> list[EmailMessage]:
     """
     emails_serialized_list = []
     # fetch 10 emails from the database where isGeminiParsed is False
-    emails_list = DB_SESSION.query(EmailMessageORM).filter(EmailMessageORM.isGeminiParsed.is_(False)).limit(100).all()
+    now = datetime.now()
+    year = now.year
+    threshold = datetime(year, 10, 31)
+
+    emails_list = DB_SESSION.query(EmailMessageORM) \
+        .filter(EmailMessageORM.isGeminiParsed.is_(False)) \
+        .filter(EmailMessageORM.date_time > threshold) \
+        .order_by(EmailMessageORM.date_time.desc()) \
+        .limit(10) \
+        .all()
     if not emails_list:
         log.info("No emails found in the database.")
         return []
@@ -176,13 +205,16 @@ def fetch_emails_from_database() -> list[EmailMessage]:
     try:
         for email in emails_list:
             # Convert ORM object to Pydantic model
+            emailId = email.emailId
+            if emailId is None:
+                emailId = email.emailSender
             email_serialized = EmailMessage(
                 thread_id=email.thread_id,
                 id=email.id,
                 snippet=email.snippet,
                 date_time=email.date_time,
                 emailSender=email.emailSender,
-                emailId=email.emailId
+                emailId=emailId
             )
             emails_serialized_list.append(email_serialized)
         return emails_serialized_list

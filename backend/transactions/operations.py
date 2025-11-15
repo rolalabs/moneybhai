@@ -4,7 +4,7 @@ from dateutil import parser
 from backend.mail.model import EmailMessage
 from backend.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
 from backend.transactions.models import Transaction, TransactionORM
-from backend.utils.connectors import DB_SESSION, MODEL
+from backend.utils.connectors import DB_SESSION, GEN_AI_CLIENT
 from backend.utils.log import log
 
 def get_last_transaction():
@@ -12,7 +12,63 @@ def get_last_transaction():
     DB_SESSION.close()
     return last_record
 
+def generate_transactions_list_from_emails(message_to_parse_list: list[str]) -> list:
+    BASE_PROMPT = """You are an expert data extraction assistant specialized in financial transaction alert messages from banks, credit cards, or UPI platforms.
 
+    **Your Goal:** Extract the specified data fields from the provided message(s) and return **ONLY** a valid JSON list. Each item in the list must be a JSON object representing one transaction.
+
+    **Strict Output Requirements:**
+    * **Absolutely no conversational text, explanations, or markdown formatting (e.g., ```json) outside the JSON list itself.**
+    * The response must begin with `[` and end with `]`.
+
+    **Extracted Fields and Constraints:**
+    * `thread_id` (string): Unique identifier for the message. This maps to the "Thread-ID" in the message.
+    * `amount` (number): Numeric value of the transaction. Do not include currency symbols.
+    * `transaction_type` (string): **Strictly** one of: "debit" or "credit".
+    * `source_identifier` (string): Account number, card number, or UPI ID from which money was deducted or into which money was received.
+    * `destination` (string): Name, UPI ID, merchant, or platform that is the recipient or sender.
+    * `reference_number` (string): UPI or bank transaction reference number. Can be an empty string if not found.
+    * `mode` (string): **Strictly** one of: "UPI", "Credit Card", "Bank Transfer", "ATM", "POS", or "Unknown".
+    * `reason` (string): Description or reason for the transaction. Can be an empty string if not found.
+    * `date` (string): The transaction date in 'YYYY-MM-DD' format. If the year is not explicitly mentioned, assume the current year (2025). If the date is not found, return `null`.
+
+    Rules:
+    1. Exclude any emails that is for OTPs, promotional offers, or non-transactional alerts.
+
+    **Example Message and Expected Output:**
+
+    Message: "Dear Customer, Rs.65.00 has been debited from account 1531 to VPA Q285361434@ybl MADHU SUDHAN S on 04-07-25. Your UPI transaction reference number is 254342617978. Thread-ID: 1234567890abcdef"
+
+    Expected Output:
+    ```json
+    [
+    {
+        "thread_id": "1234567890abcdef",
+        "amount": 65.00,
+        "transaction_type": "debit",
+        "source_identifier": "1531",
+        "destination": "Q285361434@ybl MADHU SUDHAN S",
+        "reference_number": "254342617978",
+        "mode": "UPI",
+        "reason": "Payment to VPA Q285361434@ybl MADHU SUDHAN S",
+        "date": "2025-07-04"
+    }
+    ]"""
+    final_prompt = BASE_PROMPT + "\n\n" + "\n\n".join(message_to_parse_list)
+    response = GEN_AI_CLIENT.models.generate_content(
+        model='gemini-2.5-pro', contents=final_prompt
+    )
+    return response.text
+
+def extract_json_from_response(response: str) -> dict | None:
+    """Extract JSON content from LLM response, handling code blocks."""
+    try:
+        cleaned = re.sub(r"^```[a-zA-Z]*\n|\n```$", "", response)
+        return json.loads(cleaned)
+    except Exception as e:
+        # logger.error("Failed to extract JSON from LLM response: %s", e)
+        print(f"Failed to extract JSON from LLM response: {e}")
+        return None
 def process_emails(emails_list: list[EmailMessage]):
 
     message_dict_list = {msg.id: msg for msg in emails_list}
@@ -22,16 +78,21 @@ def process_emails(emails_list: list[EmailMessage]):
     for msg in emails_list:
         id = msg.id
         snippet = msg.snippet
+        mark_email_as_gemini_parsed(msg.thread_id)
 
         if not snippet:
             continue
 
         snippet = f"Thread-ID {id}:\n{snippet}"
         message_to_parse_list.append(snippet)
-        mark_email_as_gemini_parsed(msg.thread_id)
+        # mark_email_as_gemini_parsed(msg.thread_id)
 
-    model_response = MODEL(str(message_to_parse_list), list[Transaction])
-    transactions_json = json.loads(model_response)
+    model_response = generate_transactions_list_from_emails(message_to_parse_list) 
+    transactions_json = extract_json_from_response(model_response)
+
+    if not transactions_json:
+        print("No valid transactions found.")
+        return
 
     count = 0
     for transaction in transactions_json:
