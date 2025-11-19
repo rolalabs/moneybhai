@@ -150,7 +150,7 @@ def fetch_emails(service: Resource):
     last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.desc()).first()
     if last_processed_email:
         # get its time
-        last_processed_time = last_processed_email.date_time - timedelta(days=3)
+        last_processed_time = last_processed_email.date_time - timedelta(days=5)
         last_processed_time = last_processed_time.strftime('%Y/%m/%d')
         # filter from that time onwards
         query = f"after:{last_processed_time}"
