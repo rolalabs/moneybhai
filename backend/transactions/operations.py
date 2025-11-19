@@ -1,6 +1,7 @@
 import re
 import json
 from dateutil import parser
+from backend.config.llm import extract_transaction_details
 from backend.mail.model import EmailMessage
 from backend.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
 from backend.transactions.models import Transaction, TransactionORM
@@ -97,23 +98,24 @@ def process_emails(emails_list: list[EmailMessage]):
 
     count = 0
     for transaction in transactions_json:
-        t: Transaction = Transaction(**transaction)
-        email_details: EmailMessage = message_dict_list.get(t.id, None)
-        txn = TransactionORM(
-            id=t.id, 
-            amount=t.amount,
-            transaction_type=t.transaction_type,
-            source_identifier=t.source_identifier,
-            source_type=t.source_type,
-            destination=t.destination,
-            mode=t.mode,
-            reference_number=t.reference_number,
-            emailSender=email_details.emailSender,
-            emailId=email_details.emailId,
-            date_time=email_details.date_time,
-        )
-        # wrap around try catch to handle failures
         try:
+            t: Transaction = Transaction(**transaction)
+            email_details: EmailMessage = message_dict_list.get(t.id, None)
+            txn = TransactionORM(
+                id=t.id, 
+                amount=t.amount,
+                transaction_type=t.transaction_type,
+                source_identifier=t.source_identifier,
+                source_type=t.source_type,
+                destination=t.destination,
+                mode=t.mode,
+                reference_number=t.reference_number,
+                emailSender=email_details.emailSender,
+                emailId=email_details.emailId,
+                date_time=email_details.date_time,
+            )
+            # wrap around try catch to handle failures
+            # mark_email_as_transaction(email_details.id)
             DB_SESSION.add(txn)
             DB_SESSION.commit()
             count += 1
@@ -122,8 +124,7 @@ def process_emails(emails_list: list[EmailMessage]):
             print(f"Error inserting transactions: {e}")
         finally:
             # Mark the email as a transaction
-            mark_email_as_transaction(email_details.id)
-            mark_email_as_gemini_parsed(email_details.id)
+            mark_email_as_gemini_parsed(transaction.get('id'))
     
     log.info(f"Processed {count} transactions from {len(emails_list)} emails.")
     DB_SESSION.close()
