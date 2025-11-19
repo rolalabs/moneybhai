@@ -8,3 +8,5 @@ dotenv
 numpy
 transformers
 timm
+fastapi
+uvicorn
