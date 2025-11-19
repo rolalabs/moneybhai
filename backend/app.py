@@ -24,11 +24,6 @@ def run_email_watcher(poll_every_sec=5):
         log.exception(f"Error in watcher loop: {e}")
 
 
-# run_email_watcher()
-
-
-# populate_email_ids()
-
 def fetch_and_process_emails():
     while True:
         start_time = time.time()
@@ -85,5 +80,3 @@ async def run_email_watcher_route(background_tasks: BackgroundTasks, poll_every_
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-# fetch_and_process_emails()
