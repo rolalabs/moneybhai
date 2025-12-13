@@ -1,3 +1,10 @@
+from fastapi import APIRouter
+
+from src.utils.log import setup_logger
+
+router = APIRouter()
+logger = setup_logger(__name__)
+
 import time
 from datetime import datetime
 from fastapi import FastAPI, BackgroundTasks
@@ -76,7 +83,3 @@ async def run_email_watcher_route(background_tasks: BackgroundTasks, poll_every_
             status_code=500,
             content={"message": "Failed to start email watcher", "error": str(e)}
         )
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
