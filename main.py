@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 from fastapi.middleware.cors import CORSMiddleware
-# from app.api import router
+from src.api import router
 # from app.ws import chat
 
 app = FastAPI(
@@ -15,7 +15,7 @@ app = FastAPI(
     redoc_url=None,
     openapi_version="3.0.2"
 )
-# app.include_router(router, prefix="/api")
+app.include_router(router, prefix="/api")
 # app.include_router(chat.router, prefix="/ws")
 
 origins = [
