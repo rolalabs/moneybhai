@@ -1,12 +1,12 @@
 import re
 import json
 from dateutil import parser
-from backend.config.llm import extract_transaction_details
-from backend.mail.model import EmailMessage
-from backend.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
-from backend.transactions.models import Transaction, TransactionORM
-from backend.utils.connectors import DB_SESSION, GEN_AI_CLIENT
-from backend.utils.log import log
+from api.config.llm import extract_transaction_details
+from api.mail.model import EmailMessage
+from api.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
+from api.transactions.models import Transaction, TransactionORM
+from api.utils.connectors import DB_SESSION, GEN_AI_CLIENT
+from api.utils.log import log
 
 def get_last_transaction():
     last_record = DB_SESSION.query(TransactionORM).order_by(TransactionORM.id.desc()).first()

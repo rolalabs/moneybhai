@@ -3,13 +3,13 @@ from datetime import datetime, timedelta
 import time
 import psycopg2
 from sqlalchemy.exc import IntegrityError
-from backend.utils.log import log
+from api.utils.log import log
 from dateutil import parser
 import re
 from googleapiclient.discovery import Resource
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from backend.mail.model import EmailMessage, EmailMessageORM
-from backend.utils.connectors import DB_SESSION
+from api.mail.model import EmailMessage, EmailMessageORM
+from api.utils.connectors import DB_SESSION
 from sqlalchemy.dialects.postgresql import insert
 from datetime import datetime
 
@@ -150,7 +150,7 @@ def fetch_emails(service: Resource):
     last_processed_email = DB_SESSION.query(EmailMessageORM).order_by(EmailMessageORM.date_time.desc()).first()
     if last_processed_email:
         # get its time
-        last_processed_time = last_processed_email.date_time - timedelta(days=5)
+        last_processed_time = last_processed_email.date_time - timedelta(days=3)
         last_processed_time = last_processed_time.strftime('%Y/%m/%d')
         # filter from that time onwards
         query = f"after:{last_processed_time}"
@@ -193,7 +193,7 @@ def fetch_emails_from_database() -> list[EmailMessage]:
     # fetch 10 emails from the database where isGeminiParsed is False
     now = datetime.now()
     year = now.year
-    threshold = datetime(year, 10, 31)
+    threshold = datetime(year, 9, 30)
 
     emails_list = DB_SESSION.query(EmailMessageORM) \
         .filter(EmailMessageORM.isGeminiParsed.is_(False)) \

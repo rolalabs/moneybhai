@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 import sqlalchemy
 from sqlalchemy import Column, String, Float, DateTime
-from backend.utils.connectors import DB_BASE, DB_SESSION
+from api.utils.connectors import DB_BASE, DB_SESSION
 
 class Transaction(BaseModel):
     id: str = None

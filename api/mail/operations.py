@@ -7,10 +7,10 @@ This part of the code is responsible for ensuring the data is intact.
     1.4 For each email, if emailId is empty, populate it with the emailSender
 '''
 import re
-from backend.utils.connectors import DB_SESSION
-from backend.mail.model import EmailMessageORM
+from api.utils.connectors import DB_SESSION
+from api.mail.model import EmailMessageORM
 from sqlalchemy import update
-from backend.utils.log import log
+from api.utils.log import log
 
 def fetch_emails_with_empty_id():
     """

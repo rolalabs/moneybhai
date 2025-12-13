@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, Boolean, JSON
 from pydantic import BaseModel
-from backend.utils.connectors import DB_BASE, DB_SESSION
+from api.utils.connectors import DB_BASE, DB_SESSION
 
 class EmailMessage(BaseModel):
     thread_id: str

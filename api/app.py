@@ -3,12 +3,12 @@ from datetime import datetime
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from backend.mail.auth import authenticate_gmail
-from backend.mail.fetch import fetch_emails, fetch_emails_from_database
-from backend.transactions.operations import process_emails
-from backend.mail.model import EmailMessage
-from backend.mail.operations import populate_email_ids
-from backend.utils.log import log
+from api.mail.auth import authenticate_gmail
+from api.mail.fetch import fetch_emails, fetch_emails_from_database
+from api.transactions.operations import process_emails
+from api.mail.model import EmailMessage
+from api.mail.operations import populate_email_ids
+from api.utils.log import log
 
 app = FastAPI(title="MoneyBhai Email Processor", version="1.0.0")
 
