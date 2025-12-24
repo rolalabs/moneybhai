@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 import time
 from datetime import datetime
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from src.utils.log import setup_logger
 
@@ -15,8 +15,6 @@ logger = setup_logger(__name__)
 # from api.mail.model import EmailMessage
 # from api.mail.operations import populate_email_ids
 # from api.utils.log import log
-
-app = FastAPI(title="MoneyBhai Email Processor", version="1.0.0")
 
 def run_email_watcher(poll_every_sec=5):
     logger.info("Starting Gmail polling service...")
@@ -44,12 +42,12 @@ def fetch_and_process_emails():
 
         logger.info(f"Processed {len(emails_list)} emails in {time.time() - start_time:.2f} seconds.")
 
-@app.get("/")
+@router.get("/")
 async def root():
     """Root endpoint"""
     return {"message": "MoneyBhai Email Processor API", "status": "running"}
 
-@app.post("/process-emails")
+@router.post("/process-emails")
 async def fetch_and_process_emails_route(background_tasks: BackgroundTasks):
     """Route to fetch and process emails"""
     try:
@@ -66,7 +64,7 @@ async def fetch_and_process_emails_route(background_tasks: BackgroundTasks):
             content={"message": "Failed to start email fetch and process task", "error": str(e)}
         )
 
-@app.post("/fetch-emails")
+@router.post("/fetch-emails")
 async def run_email_watcher_route(background_tasks: BackgroundTasks, poll_every_sec: int = 5):
     """Route to start the email watcher service"""
     try:

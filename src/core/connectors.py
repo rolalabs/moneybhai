@@ -12,6 +12,7 @@ from google.oauth2 import service_account
 
 class Settings(BaseSettings):
     DEBUG: bool = False
+    GEMINI_API_KEY: str
     CLOUD_SQL_USER: str
     CLOUD_SQL_PASSWORD: str
     CLOUD_SQL_HOST: str
@@ -51,7 +52,7 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()  # ensures session is closed after request
 
-credentials = service_account.Credentials.from_service_account_info(
-    json.loads(ENV_SETTINGS.GOOGLE_APPLICATION_CREDENTIALS)
-)
-credentials = credentials.with_scopes(["https://www.googleapis.com/auth/cloud-platform"])
+# credentials = service_account.Credentials.from_service_account_info(
+#     json.loads(ENV_SETTINGS.GOOGLE_APPLICATION_CREDENTIALS)
+# )
+# credentials = credentials.with_scopes(["https://www.googleapis.com/auth/cloud-platform"])
