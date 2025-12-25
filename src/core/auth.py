@@ -2,8 +2,8 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.core.config import ENV_SETTINGS
-from app.core.logging import setup_logger
+from src.core.connectors import ENV_SETTINGS
+from src.utils.log import setup_logger
 import json
 
 logger = setup_logger(__name__)
@@ -14,19 +14,19 @@ def initialize_firebase():
     try:
         if not firebase_admin._apps:
             # Parse the JSON string from environment variable
-            service_account_info = json.loads(ENV_SETTINGS.FIREBASE_GOOGLE_APPLICATION_CREDENTIALS)
+            service_account_info = json.loads(ENV_SETTINGS.GOOGLE_APPLICATION_CREDENTIALS)
             cred = credentials.Certificate(service_account_info)
             default_app = firebase_admin.initialize_app(cred)
             logger.info(f"Firebase Admin SDK initialized successfully - Project: {default_app.project_id}")
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse FIREBASE_GOOGLE_APPLICATION_CREDENTIALS JSON: {e}")
+        logger.error(f"Failed to parse GOOGLE_APPLICATION_CREDENTIALS JSON: {e}")
         raise
     except Exception as e:
         logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
         raise
 
 # Initialize Firebase on module import
-initialize_firebase()
+# initialize_firebase()
 
 # Security scheme for Bearer token
 security = HTTPBearer()
