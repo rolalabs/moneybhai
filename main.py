@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_redoc_html
@@ -5,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 from src.api import router
 # from app.ws import chat
 
@@ -61,4 +63,11 @@ async def redoc_docs(user: str = Depends(verify_credentials)):
     return get_redoc_html(
         openapi_url=app.openapi_url,
         title="MoneyBhai API Docs"
+    )
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 8080))
     )
