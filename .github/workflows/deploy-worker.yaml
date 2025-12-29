@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  PROJECT_ID: your-project-id
+  PROJECT_ID: rola-labs
   REGION: asia-south1
   REPO: kora
   SERVICE: worker-service
