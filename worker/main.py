@@ -19,3 +19,8 @@ async def process_task(request: Request):
     # TODO: update DB here
 
     return {"status": "done", "job_id": job_id}
+
+# Add health check api
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
