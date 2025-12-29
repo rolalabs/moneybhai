@@ -48,5 +48,5 @@ jobs:
             --image $IMAGE_URI \
             --region $REGION \
             --no-allow-unauthenticated \
-            --min-instances 0
+            --min-instances 0 \
             --max-instances 3
