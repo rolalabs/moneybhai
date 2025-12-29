@@ -9,7 +9,7 @@ env:
   PROJECT_ID: rola-labs
   REGION: asia-south1
   REPO: moneybhai
-  SERVICE: worker-service
+  SERVICE: mb-sync-worker
 
 jobs:
   deploy:
