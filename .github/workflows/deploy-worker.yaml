@@ -8,7 +8,7 @@ on:
 env:
   PROJECT_ID: rola-labs
   REGION: asia-south1
-  REPO: kora
+  REPO: moneybhai
   SERVICE: worker-service
 
 jobs:
