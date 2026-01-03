@@ -47,6 +47,11 @@ jobs:
           gcloud run deploy $SERVICE \
             --image $IMAGE_URI \
             --region $REGION \
-            --no-allow-unauthenticated \
             --min-instances 1 \
-            --max-instances 1
+            --max-instances 1 \
+            --set-env-vars="\
+              DATABASE_URL=${{ secrets.DATABASE_URL }},\
+              GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},\
+              GCP_CREDENTIALS=${{ secrets.GCP_CREDENTIALS }},\
+              WORKER_CLOUD_RUN_URL=${{ vars.WORKER_CLOUD_RUN_URL }},\
+              API_TOKEN_GITHUB=${{ secrets.API_TOKEN_GITHUB }}"
