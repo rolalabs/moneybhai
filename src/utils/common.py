@@ -9,7 +9,7 @@ def enqueue_worker_task(payload: dict):
     parent = client.queue_path(
         "rola-labs",
         "asia-south1",
-        "expense-workers"
+        "moneybhai-workers"
     )
 
     task = {
