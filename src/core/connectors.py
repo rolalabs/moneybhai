@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     WORKER_CLOUD_RUN_URL: str
     DATABASE_URL: str
     API_TOKEN_GITHUB: str = None
-    GOOGLE_APPLICATION_CREDENTIALS: str = None
+    GCP_CREDENTIALS: str = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

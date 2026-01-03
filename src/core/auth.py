@@ -14,7 +14,7 @@ def initialize_firebase():
     try:
         if not firebase_admin._apps:
             # Parse the JSON string from environment variable
-            service_account_info = json.loads(ENV_SETTINGS.GOOGLE_APPLICATION_CREDENTIALS)
+            service_account_info = json.loads(ENV_SETTINGS.GCP_CREDENTIALS)
             cred = credentials.Certificate(service_account_info)
             default_app = firebase_admin.initialize_app(cred)
             logger.info(f"Firebase Admin SDK initialized successfully - Project: {default_app.project_id}")
