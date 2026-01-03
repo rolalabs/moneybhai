@@ -1,7 +1,6 @@
 import re
 import json
 from dateutil import parser
-from src.core.llm import extract_transaction_details
 from api.mail.model import EmailMessage
 from api.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
 from api.transactions.models import Transaction, TransactionORM

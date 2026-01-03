@@ -1,4 +1,4 @@
-name: Deploy Cloud Run Worker
+name: Deploy Worker
 
 on:
   push:
