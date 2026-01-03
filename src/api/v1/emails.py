@@ -4,29 +4,19 @@ from datetime import datetime
 from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from src.utils.log import setup_logger
+from utils.common import enqueue_worker_task
 
 router = APIRouter()
 logger = setup_logger(__name__)
 
 
-# from api.mail.auth import authenticate_gmail
-# from api.mail.fetch import fetch_emails, fetch_emails_from_database
-# from api.transactions.operations import process_emails
-# from api.mail.model import EmailMessage
-# from api.mail.operations import populate_email_ids
-# from api.utils.log import log
-
-def run_email_watcher(poll_every_sec=5):
-    logger.info("Starting Gmail polling service...")
-
-    last_checked = datetime.utcnow()
-    gmail_service = authenticate_gmail()
-
-    try:
-        fetch_emails(gmail_service)
-    except Exception as e:
-        logger.exception(f"Error in watcher loop: {e}")
-
+import os.path
+import base64
+import json
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 
 def fetch_and_process_emails():
     while True:
@@ -79,4 +69,30 @@ async def run_email_watcher_route(background_tasks: BackgroundTasks, poll_every_
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to start email watcher", "error": str(e)}
+        )
+    
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+@router.post("/synchronize")
+async def scrape_emails_route(background_tasks: BackgroundTasks):
+    """Route to scrape emails immediately"""
+    try:     
+        # background_tasks.add_task(run_email_watcher)
+        # creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        # gmail_service = build('gmail', 'v1', credentials=creds)
+
+        enqueue_worker_task({
+            "user_id": "user_id",
+            "expense_id": "expense_id"
+        })
+
+
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Email scraping completed successfully", "status": "completed"}
+        )
+    except Exception as e:
+        logger.exception(f"Error during email scraping: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to scrape emails", "error": str(e)}
         )
