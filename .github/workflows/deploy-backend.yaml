@@ -42,6 +42,16 @@ jobs:
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
+      - name: Create env file
+        run: |
+          cat <<EOF > env.yaml
+          DATABASE_URL: "${{ secrets.DATABASE_URL }}"
+          GEMINI_API_KEY: "${{ secrets.GEMINI_API_KEY }}"
+          GCP_CREDENTIALS: '${{ secrets.GCP_CREDENTIALS }}'
+          WORKER_CLOUD_RUN_URL: "${{ vars.WORKER_CLOUD_RUN_URL }}"
+          API_TOKEN_GITHUB: "${{ secrets.API_TOKEN_GITHUB }}"
+          EOF
+
       - name: Deploy Worker to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
@@ -49,9 +59,4 @@ jobs:
             --region $REGION \
             --min-instances 1 \
             --max-instances 1 \
-            --set-env-vars="\
-            DATABASE_URL=${{ secrets.DATABASE_URL }},\
-            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }},\
-            GCP_CREDENTIALS=${{ secrets.GCP_CREDENTIALS }},\
-            WORKER_CLOUD_RUN_URL=${{ vars.WORKER_CLOUD_RUN_URL }},\
-            API_TOKEN_GITHUB=${{ secrets.API_TOKEN_GITHUB }}"
+            --env-vars-file env.yaml
