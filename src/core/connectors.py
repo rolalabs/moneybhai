@@ -13,11 +13,8 @@ from google.oauth2 import service_account
 class Settings(BaseSettings):
     DEBUG: bool = False
     GEMINI_API_KEY: str
-    CLOUD_SQL_USER: str
-    CLOUD_SQL_PASSWORD: str
-    CLOUD_SQL_HOST: str
-    CLOUD_SQL_DB: str
     WORKER_CLOUD_RUN_URL: str
+    DATABASE_URL: str
     API_TOKEN_GITHUB: str = None
     GOOGLE_APPLICATION_CREDENTIALS: str = None
 
@@ -32,10 +29,9 @@ GEN_AI_CLIENT = genai.Client(api_key=ENV_SETTINGS.GEMINI_API_KEY, http_options=H
 # MODEL = outlines.from_gemini(GEN_AI_CLIENT, "gemini-2.5-flash")
 
 DB_BASE = declarative_base(metadata=MetaData(schema="moneybhai"))
-DATABASE_URL = f"postgresql+psycopg2://{ENV_SETTINGS.CLOUD_SQL_USER}:{ENV_SETTINGS.CLOUD_SQL_PASSWORD}@{ENV_SETTINGS.CLOUD_SQL_HOST}/{ENV_SETTINGS.CLOUD_SQL_DB}"
 
 DB_ENGINE = create_engine(
-    DATABASE_URL,
+    ENV_SETTINGS.DATABASE_URL,
     echo=False,  # optional, logs SQL queries
     future=True
 )
