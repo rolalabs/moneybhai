@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     CLOUD_SQL_PASSWORD: str
     CLOUD_SQL_HOST: str
     CLOUD_SQL_DB: str
+    WORKER_CLOUD_RUN_URL: str
     API_TOKEN_GITHUB: str = None
     GOOGLE_APPLICATION_CREDENTIALS: str = None
 
