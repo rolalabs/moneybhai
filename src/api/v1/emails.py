@@ -81,7 +81,7 @@ async def scrape_emails_route(background_tasks: BackgroundTasks):
         # gmail_service = build('gmail', 'v1', credentials=creds)
 
         enqueue_worker_task({
-            "user_id": "user_id",
+            "job_id": "user_id",
             "expense_id": "expense_id"
         })
 
