@@ -7,8 +7,6 @@ sqlalchemy
 psycopg2-binary
 dotenv
 numpy
-transformers
-timm
 fastapi
 uvicorn
 python-dotenv
