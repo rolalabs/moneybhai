@@ -13,3 +13,4 @@ python-dotenv
 pydantic
 pydantic_settings
 google-cloud-tasks==2.20.0
+alembic==1.17.2
