@@ -4,6 +4,6 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install -r requirements.txt
 
-COPY worker /app
+COPY worker /app/worker
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "worker.main:app", "--host", "0.0.0.0", "--port", "8080"]
