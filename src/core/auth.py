@@ -2,7 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.core.connectors import ENV_SETTINGS
+from src.core.environment import ENV_SETTINGS
 from src.utils.log import setup_logger
 import json
 

@@ -1,8 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Import our database models
@@ -10,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from src.core.connectors import DB_BASE
+from src.core.database import DB_BASE
 # Import all models to ensure they are registered with the base
 from src.modules.emails.model import EmailMessageORM
 from src.modules.transactions.models import TransactionORM

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 import sqlalchemy
 from sqlalchemy import Column, String, Float, DateTime
-from src.core.connectors import DB_BASE, DB_ENGINE
+from src.core.database import DB_BASE
 
 class Transaction(BaseModel):
     id: str = None
@@ -27,6 +27,3 @@ class TransactionORM(DB_BASE):
     emailSender = Column(String(128))
     emailId = Column(String(128))
     reference_number = Column(String(128))
-
-# Don't auto-create tables here - use Alembic instead
-# DB_BASE.metadata.create_all(DB_ENGINE)

@@ -2,7 +2,7 @@ import json
 import base64
 
 from google.cloud import tasks_v2
-from src.core.connectors import ENV_SETTINGS
+from src.core.environment import ENV_SETTINGS
 
 def enqueue_worker_task(payload: dict):
     client = tasks_v2.CloudTasksClient()
