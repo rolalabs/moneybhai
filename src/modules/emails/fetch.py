@@ -36,20 +36,6 @@ def extract_email_body(payload):
             return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
     return "(No body found)"
 
-def fetch_emails_messages_list(service: Resource, query, next_page_token=None, max_results=100) -> tuple:
-    results = service.users().messages().list(
-        userId='me', 
-        maxResults=max_results, 
-        q=query,
-        pageToken=next_page_token,
-    ).execute()
-    messages = results.get('messages', [])
-    message_list = []
-    for msg in messages:
-        msg_data = service.users().messages().get(userId='me', id=msg['id']).execute()
-        message_list.append(msg_data)
-    return message_list, results.get('nextPageToken')
-
 def fetch_email_threads_list(service: Resource, next_page_token=None, max_results=100, query=None) -> tuple:
     """
     Fetches a list of email threads from the Gmail API.
@@ -106,38 +92,6 @@ def fetch_message_details(msg_data, msg_id) -> dict:
     except Exception as e:
         print(f"Error fetching message {msg_id}: {e}")
         return None
-
-def process_mails_and_insert_to_db(message_list = []):
-    """
-    Processes a list of email messages and inserts them into the database.
-    
-    Args:
-        message_list (list): List of email messages to process.
-    """
-    messages_to_insert = []
-    for msg in message_list:
-        result = fetch_message_details(msg, msg['id'])
-        if result:
-            messages_to_insert.append(result)
-
-    try:
-
-        insert_statement = insert(EmailMessageORM).values(messages_to_insert)
-
-        # For PostgreSQL/SQLite, specify the unique constraint column(s)
-        # Replace 'id' with your actual unique column or (col1, col2) for composite unique constraints
-        on_conflict_statement = insert_statement.on_conflict_do_nothing(
-            index_elements=[EmailMessageORM.id] # Or other unique columns
-        )
-        DB_SESSION.execute(on_conflict_statement)
-        DB_SESSION.commit()
-    except IntegrityError as e:
-        DB_SESSION.rollback()
-        if isinstance(e.orig, psycopg2.errors.UniqueViolation):
-            log.error("❌ Duplicate entry for a unique field!")
-            # You can raise custom error or skip
-        else:
-            raise  # re-raise if it's another type of IntegrityError
 
 def fetch_emails(service: Resource):
     messages = []
