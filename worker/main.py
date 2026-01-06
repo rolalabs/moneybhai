@@ -1,9 +1,14 @@
 # worker/main.py
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import Depends, FastAPI, Request, HTTPException
 import json
 import asyncio
 import logging
 import base64
+
+from sqlalchemy.orm import Session
+from worker.connectors import get_db
+from worker.email import EmailManager
+from worker.gmailAuth import authenticateGmail
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,16 +17,16 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.post("/tasks/process")
-async def process_task(request: Request):
+async def processTask(request: Request, db: Session = Depends(get_db)):
     try:
         # Get the raw body (which is base64 encoded)
-        body = await request.body()
+        body = await request.json()
         
         # Decode the base64 payload
-        decoded_body = base64.b64decode(body).decode("utf-8")
+        # decodedBody = base64.b64decode(body).decode("utf-8")
         
         # Parse the JSON
-        payload = json.loads(decoded_body)
+        payload = json.loads(body)
         
         # Validate payload
         job_id = payload.get("job_id")
@@ -30,11 +35,11 @@ async def process_task(request: Request):
 
         logger.info(f"Processing job {job_id}")
 
-        # simulate long work (using async sleep instead of blocking sleep)
-        await asyncio.sleep(5)
+        gmailService = authenticateGmail(payload.get("token"))
 
-        # TODO: update DB here
-        # Example: await update_job_status(job_id, "completed")
+        # simulate long work (using async sleep instead of blocking sleep)
+        emailManager = EmailManager(gmailService, db)
+        messages = emailManager.execute("is:unread")
 
         logger.info(f"Completed job {job_id}")
         return {"status": "done", "job_id": job_id}
@@ -49,4 +54,4 @@ async def process_task(request: Request):
 # Add health check api
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "worker is healthy"}
