@@ -45,8 +45,6 @@ async def get_user(id: str, db: Session = Depends(get_db)):
 async def scrapeEmailsRoute(id: str, userSyncModel: UserSyncModel, db: Session = Depends(get_db)):
     """Route to scrape emails immediately"""
     try:
-
-        
         user = db.query(UsersORM).filter(UsersORM.id == id).first()
         if not user:
             return JSONResponse(
