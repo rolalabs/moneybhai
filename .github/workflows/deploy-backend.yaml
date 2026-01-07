@@ -3,7 +3,7 @@ name: Deploy Backend Service
 on:
   push:
     branches:
-      - x
+      - main
 
 env:
   PROJECT_ID: rola-labs
@@ -52,17 +52,6 @@ jobs:
           API_TOKEN_GITHUB: "${{ secrets.API_TOKEN_GITHUB }}"
           EOF
 
-      - name: Run Database Migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          # Install Python and dependencies for migration
-          python -m pip install --upgrade pip
-          pip install alembic psycopg2-binary python-dotenv pydantic-settings sqlalchemy
-          
-          # Run migrations (DATABASE_URL is set from environment)
-          alembic upgrade head
-          
       - name: Deploy Worker to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
