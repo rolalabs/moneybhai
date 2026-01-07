@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.post("/tasks/process")
-async def processTask(task: TaskModel, db: Session = Depends(get_db)):
+async def processTask(payload: dict, db: Session = Depends(get_db)):
     '''
     1. take the user id given in input
     2. fetch the user details via user id
@@ -27,7 +27,8 @@ async def processTask(task: TaskModel, db: Session = Depends(get_db)):
     7. return status    
     '''
     try:
-        gmailService = authenticateGmail(task.token)
+        logger.info(f"Received task payload: {payload}")
+        gmailService = authenticateGmail(payload["token"])
 
         # simulate long work (using async sleep instead of blocking sleep)
         emailManager = EmailManager(gmailService, db)
