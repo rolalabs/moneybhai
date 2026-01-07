@@ -3,6 +3,9 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import secrets
 import subprocess
 import os
+from sqlalchemy import text
+from src.core.database import get_db
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 security = HTTPBasic()
@@ -63,3 +66,41 @@ async def upgrade_migrations(user: str = Depends(verify_admin_credentials)):
             status_code=500,
             detail=f"Migration failed: {str(e)}"
         )
+
+
+@router.get("/db/check")
+async def check_database_connection(
+    user: str = Depends(verify_admin_credentials),
+    db: Session = Depends(get_db)
+):
+    """
+    Check database connection health.
+    Returns database version and connection status.
+    """
+    try:
+        # Execute a simple query to check connection
+        result = db.execute(text("SELECT version()"))
+        version = result.scalar()
+        
+        # Check if we can access the schema
+        schema_check = db.execute(text("SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'moneybhai'"))
+        schema_exists = schema_check.scalar() is not None
+        
+        return {
+            "status": "success",
+            "message": "Database connection is healthy",
+            "database_version": version,
+            "schema_exists": schema_exists
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Database connection failed",
+                "error": str(e)
+            }
+        )
+
+
