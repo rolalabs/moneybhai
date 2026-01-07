@@ -22,7 +22,9 @@ def enqueue_worker_task(payload: dict):
             "oidc_token": {
                 "service_account_email": "rola-labs@appspot.gserviceaccount.com"
             },
-            "body": json.dumps(payload)
+            "body": base64.b64encode(
+                json.dumps(payload).encode("utf-8")
+            )
         }
     }
 
