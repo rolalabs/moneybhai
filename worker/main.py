@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.post("/tasks/process")
-async def processTask(payload: dict, db: Session = Depends(get_db)):
+async def processTask(request: Request, db: Session = Depends(get_db)):
     '''
     1. take the user id given in input
     2. fetch the user details via user id
@@ -27,6 +27,7 @@ async def processTask(payload: dict, db: Session = Depends(get_db)):
     7. return status    
     '''
     try:
+        payload = await request.json()
         logger.info(f"Received task payload: {payload}")
         gmailService = authenticateGmail(payload["token"])
 
