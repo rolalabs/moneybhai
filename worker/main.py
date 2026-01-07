@@ -1,9 +1,7 @@
 # worker/main.py
 from fastapi import Depends, FastAPI, Request, HTTPException
 import json
-import asyncio
 import logging
-import base64
 
 from sqlalchemy.orm import Session
 from worker.connectors import get_db

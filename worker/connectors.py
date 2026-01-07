@@ -7,7 +7,6 @@ from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
 from google import genai
 from google.genai.types import HttpOptions
-from google.oauth2 import service_account
 
 class Settings(BaseSettings):
     DEBUG: bool = False
