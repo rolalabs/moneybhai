@@ -11,3 +11,8 @@ class UserDBModel(BaseModel):
     email: str
     full_name: str
     is_active: bool
+
+
+class UserSyncModel(BaseModel):
+    token: str
+    userId: str
