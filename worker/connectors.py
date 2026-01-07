@@ -26,7 +26,7 @@ GEN_AI_CLIENT = genai.Client(api_key=ENV_SETTINGS.GEMINI_API_KEY, http_options=H
 # Initialize the Gemini model
 # MODEL = outlines.from_gemini(GEN_AI_CLIENT, "gemini-2.5-flash")
 
-DB_BASE = declarative_base(metadata=MetaData(schema="moneybhai"))
+DB_BASE = declarative_base()
 
 DB_ENGINE = create_engine(
     ENV_SETTINGS.DATABASE_URL,
