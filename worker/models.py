@@ -28,3 +28,8 @@ class EmailMessageORM(DB_BASE):
     isTransaction = Column(Boolean, default=False)
     isGeminiParsed = Column(Boolean, default=False)
 
+class TaskModel(BaseModel):
+    id: str
+    token: str
+    email: str
+

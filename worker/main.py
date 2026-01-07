@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from worker.connectors import get_db
 from worker.email import EmailManager
 from worker.gmailAuth import authenticateGmail
+from worker.models import TaskModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,32 +16,25 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 @app.post("/tasks/process")
-async def processTask(request: Request, db: Session = Depends(get_db)):
+async def processTask(task: TaskModel, db: Session = Depends(get_db)):
+    '''
+    1. take the user id given in input
+    2. fetch the user details via user id
+    3. use the stored token to authenticate gmail
+    4. fetch unread emails
+    5. process emails
+    6. store results in db
+    7. return status    
+    '''
     try:
-        # Get the raw body (which is base64 encoded)
-        body = await request.json()
-        
-        # Decode the base64 payload
-        # decodedBody = base64.b64decode(body).decode("utf-8")
-        
-        # Parse the JSON
-        payload = json.loads(body)
-        
-        # Validate payload
-        job_id = payload.get("job_id")
-        if not job_id:
-            raise HTTPException(status_code=400, detail="Missing job_id in payload")
-
-        logger.info(f"Processing job {job_id}")
-
-        gmailService = authenticateGmail(payload.get("token"))
+        gmailService = authenticateGmail(task.token)
 
         # simulate long work (using async sleep instead of blocking sleep)
         emailManager = EmailManager(gmailService, db)
         messages = emailManager.execute("is:unread")
-
-        logger.info(f"Completed job {job_id}")
-        return {"status": "done", "job_id": job_id}
+        for message in messages:
+            logger.info(f"Processing message ID: {message['id']}")
+        return {"status": "done"}
     
     except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"Invalid JSON or base64 payload: {str(e)}")
