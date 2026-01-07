@@ -83,7 +83,7 @@ async def check_database_connection(
         version = result.scalar()
         
         # Check if we can access the schema
-        schema_check = db.execute(text("SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'moneybhai'"))
+        schema_check = db.execute(text("SELECT schema_name FROM information_schema.schemata"))
         schema_exists = schema_check.scalar() is not None
         
         return {

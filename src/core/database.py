@@ -1,11 +1,11 @@
 
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
 
 from src.core.environment import ENV_SETTINGS
 
-DB_BASE = declarative_base(metadata=MetaData(schema="moneybhai"))
+DB_BASE = declarative_base()
 
 DB_ENGINE = create_engine(
     ENV_SETTINGS.DATABASE_URL,
