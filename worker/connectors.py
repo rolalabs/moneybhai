@@ -1,3 +1,4 @@
+import json
 from google import genai
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -5,12 +6,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
-from google import genai
+from google.oauth2 import service_account
 from google.genai.types import HttpOptions
 
 class Settings(BaseSettings):
     DEBUG: bool = False
-    GEMINI_API_KEY: str
     WORKER_CLOUD_RUN_URL: str
     DATABASE_URL: str
     MB_BACKEND_API_URL: str = "http://0.0.0.0:8080/api/"
@@ -21,11 +21,18 @@ class Settings(BaseSettings):
 
 ENV_SETTINGS = Settings()
 
+credentials = service_account.Credentials.from_service_account_info(
+    json.loads(ENV_SETTINGS.GCP_CREDENTIALS)
+)
+credentials = credentials.with_scopes(["https://www.googleapis.com/auth/cloud-platform"])
 
-GEN_AI_CLIENT = genai.Client(api_key=ENV_SETTINGS.GEMINI_API_KEY, http_options=HttpOptions(timeout=60))
-
-# Initialize the Gemini model
-# MODEL = outlines.from_gemini(GEN_AI_CLIENT, "gemini-2.5-flash")
+VERTEXT_CLIENT = genai.Client(
+    http_options=HttpOptions(api_version="v1"),
+    vertexai=True,
+    project="rola-labs",
+    location="asia-south1",
+    credentials=credentials,
+)
 
 DB_BASE = declarative_base()
 

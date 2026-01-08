@@ -6,7 +6,7 @@ import requests
 from sqlalchemy.orm import Session
 from googleapiclient.discovery import Resource
 from packages.models import Transaction
-from worker.connectors import ENV_SETTINGS, GEN_AI_CLIENT
+from worker.connectors import ENV_SETTINGS, VERTEXT_CLIENT
 from worker.log import setup_logger
 from worker.models import EmailMessage
 
@@ -49,7 +49,7 @@ class EmailManager:
                 'thread_id': msg_data.get('threadId', ''),
                 'id': msg_data.get('id', ''),
                 'snippet': msg_data.get('snippet', ''),
-                'date_time': date_time.isoformat() if date_time else None,
+                'date_time': date_time,
                 'emailSender': emailSender,
                 'emailId': emailId
             }
@@ -88,12 +88,15 @@ class EmailManager:
         Send the list of emails to mb-backend api to insert into db
         Send in batch of 50
         '''
-        batch = [email.model_dump_json() for email in processed_messages]
+        formatted_email_list = []
+        for email in processed_messages:
+            formatted_email_list.append(json.loads(email.model_dump_json()))
+
         response = requests.post(
             ENV_SETTINGS.MB_BACKEND_API_URL + 'v1/emails/insert-bulk',
             headers={'Content-Type': 'application/json'},
             json={
-                'emails': batch,
+                'emails': formatted_email_list,
                 'userId': self.user_id,
                 'emailId': self.email,
             }
@@ -163,13 +166,9 @@ class AIManager:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = GEN_AI_CLIENT.models.generate_content(
+                response = VERTEXT_CLIENT.models.generate_content(
                     model='gemini-2.5-flash', 
                     contents=final_prompt,
-                    # config={
-                    #     'temperature': 0.1,
-                    #     'max_output_tokens': 8192,
-                    # }
                 )
                 return response.text
             except Exception as e:
@@ -230,7 +229,7 @@ class AIManager:
                 txn.emailSender = email_details.emailSender if email_details else None
                 txn.date_time = email_details.date_time if email_details else None
 
-                transactions_list.append(txn.model_dump_json())
+                transactions_list.append(json.loads(txn.model_dump_json(exclude_none=True)))
             except Exception as e:
                 logger.exception(e)
             finally:
@@ -248,7 +247,7 @@ class AIManager:
             ENV_SETTINGS.MB_BACKEND_API_URL + 'v1/transactions/bulk-insert',
             headers={'Content-Type': 'application/json'},
             json={
-                'emails': transactions_list,
+                'transactions': transactions_list,
                 'userId': self.user_id,
                 'emailId': self.email,
             }

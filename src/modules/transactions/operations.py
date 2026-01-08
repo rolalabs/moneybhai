@@ -4,7 +4,7 @@ from dateutil import parser
 from api.mail.model import EmailMessage
 from api.mail.operations import mark_email_as_gemini_parsed, mark_email_as_transaction
 from api.transactions.models import Transaction, TransactionORM
-from api.utils.connectors import DB_SESSION, GEN_AI_CLIENT
+from api.utils.connectors import DB_SESSION
 from api.utils.log import log
 
 def get_last_transaction():
