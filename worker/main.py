@@ -31,6 +31,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         logger.info("Received task processing request")
         payload = await request.body()
         payload = base64.b64decode(payload).decode("utf-8")
+        payload = json.loads(payload)  # Parse the JSON string to dictionary
         logger.info(f"Received task payload: {payload}")
 
         # Authenticate Gmail
