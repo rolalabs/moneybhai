@@ -37,13 +37,21 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         # Authenticate Gmail
         gmailService = authenticateGmail(payload.get("token"))
 
-        # simulate long work (using async sleep instead of blocking sleep)
-        emailManager = EmailManager(gmailService)
-        messages = emailManager.execute("is:unread")
-        for message in messages:
-            logger.info(f"Processing message ID: {message['id']}")
+        # Fetch emails and process it
+        emailManager = EmailManager(gmailService, payload.get("email"), payload.get("userId"))
 
-        #invoke mb-backend api to 
+        next_page_token = None
+        messages, next_page_token = emailManager.fetch_emails_messages_list("is:unread", next_page_token)
+        logger.info(f"Fetched {len(messages)} unread emails for userId: {payload.get('userId')}")
+
+        processed_messages = emailManager.fetch_messages_details_list(messages)
+        logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {payload.get('userId')}")
+        
+        #send emails to mb-backend for inserting into db
+        statusCode = emailManager.sync_database(processed_messages)
+        logger.info(f"Database sync status code: {statusCode}")
+
+
         return {"status": "done"}
     
     except (json.JSONDecodeError, ValueError) as e:
