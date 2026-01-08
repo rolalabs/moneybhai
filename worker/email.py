@@ -24,7 +24,7 @@ class EmailManager:
         self.db_session: Session = db_session
         self.email_messages = []
 
-    def fetch_message_details(msg_data, msg_id) -> dict:
+    def fetch_message_details(self, msg_data, msg_id) -> dict:
         try:
             # msg_data = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
             # if not msg_data:
