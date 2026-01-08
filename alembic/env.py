@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.database import DB_BASE
 # Import all models to ensure they are registered with the base
 from src.modules.emails.model import EmailMessageORM
-from src.modules.transactions.models import TransactionORM
+from src.modules.transactions.schema import TransactionORM
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
