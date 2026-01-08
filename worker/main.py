@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from worker.connectors import get_db
 from worker.operations import AIManager, EmailManager
 from worker.gmailAuth import authenticateGmail
-from worker.models import TaskModel
+from worker.models import EmailMessage, TaskModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,18 +44,18 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         messages, next_page_token = emailManager.fetch_emails_messages_list("is:unread", next_page_token)
         logger.info(f"Fetched {len(messages)} unread emails for userId: {payload.get('userId')}")
 
-        processed_messages = emailManager.fetch_messages_details_list(messages)
+        processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
         logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {payload.get('userId')}")
         
         # send emails to mb-backend for inserting into db
-        statusCode = emailManager.sync_database(processed_messages)
+        statusCode: int = emailManager.sync_database(processed_messages)
         logger.info(f"Database sync status code: {statusCode}")
 
         # Process LLM through Gemini and update the database
-        aiManager = AIManager(email=payload.get("email"), user_id=payload.get("userId"))
-        transactions_list = aiManager.process_emails(processed_messages)
+        aiManager: AIManager = AIManager(email=payload.get("email"), user_id=payload.get("userId"))
+        transactions_list: list[dict] = aiManager.process_emails(processed_messages)
         logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {payload.get('emailId')}")
-        
+
         # Send processed transactions to mb-backend for inserting into db
         if len(transactions_list) == 0:
             logger.info("No transactions extracted from emails, skipping database sync")

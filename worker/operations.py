@@ -73,21 +73,22 @@ class EmailManager:
             message_list.append(msg_data)
         return message_list, results.get('nextPageToken')
 
-    def fetch_messages_details_list(self, email_messages: list[dict]) -> list[dict]:
+    def fetch_messages_details_list(self, email_messages: list[dict]) -> list[EmailMessage]:
         messages_to_insert = []
         for msg in email_messages:
             result = self.fetch_message_details(msg, msg['id'])
             if result:
-                messages_to_insert.append(result)
+                email: EmailMessage = EmailMessage(**result)
+                messages_to_insert.append(email)
         
         return messages_to_insert
 
-    def sync_database(self, processed_messages: list[dict]):
+    def sync_database(self, processed_messages: list[EmailMessage]):
         '''
         Send the list of emails to mb-backend api to insert into db
         Send in batch of 50
         '''
-        batch = processed_messages
+        batch = [email.model_dump_json() for email in processed_messages]
         response = requests.post(
             ENV_SETTINGS.MB_BACKEND_API_URL + 'v1/emails/insert-bulk',
             headers={'Content-Type': 'application/json'},
@@ -157,10 +158,25 @@ class AIManager:
         }
         ]"""
         final_prompt = BASE_PROMPT + "\n\n" + "\n\n".join(message_to_parse_list)
-        response = GEN_AI_CLIENT.models.generate_content(
-            model='gemini-2.5-pro', contents=final_prompt
-        )
-        return response.text
+        
+        # Add retry logic for timeout errors
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = GEN_AI_CLIENT.models.generate_content(
+                    model='gemini-2.5-flash', 
+                    contents=final_prompt,
+                    # config={
+                    #     'temperature': 0.1,
+                    #     'max_output_tokens': 8192,
+                    # }
+                )
+                return response.text
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+                if attempt == max_retries - 1:
+                    logger.error(f"All retry attempts failed for generate_content: {str(e)}")
+                    raise
 
     def extract_json_from_response(self, response: str) -> dict | None:
         """Extract JSON content from LLM response, handling code blocks."""
@@ -175,7 +191,7 @@ class AIManager:
     def mark_email_as_gemini_parsed(self, email_id: str):
         pass
 
-    def process_emails(self, emails_list: list[EmailMessage]):
+    def process_emails(self, emails_list: list[EmailMessage]) -> list[dict]:
 
         message_dict_list = {msg.id: msg for msg in emails_list}
         message_to_parse_list = []
