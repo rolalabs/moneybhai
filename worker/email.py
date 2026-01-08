@@ -109,9 +109,8 @@ class EmailManager:
     
 
     def execute(self, query: str):
-        return self.fetch_latest_message_from_db()
         next_page_token = None
         messages, next_page_token = self.fetch_emails_messages_list(query, next_page_token)
-        processed_messages = self.process_emails(messages)
-        self.sync_database(processed_messages)
+        # processed_messages = self.process_emails(messages)
+        # self.sync_database(processed_messages)
         return messages
