@@ -6,7 +6,7 @@ import base64
 
 from sqlalchemy.orm import Session
 from worker.connectors import get_db
-from worker.operations import EmailManager
+from worker.operations import AIManager, EmailManager
 from worker.gmailAuth import authenticateGmail
 from worker.models import TaskModel
 
@@ -47,10 +47,21 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         processed_messages = emailManager.fetch_messages_details_list(messages)
         logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {payload.get('userId')}")
         
-        #send emails to mb-backend for inserting into db
+        # send emails to mb-backend for inserting into db
         statusCode = emailManager.sync_database(processed_messages)
         logger.info(f"Database sync status code: {statusCode}")
 
+        # Process LLM through Gemini and update the database
+        aiManager = AIManager(email=payload.get("email"), user_id=payload.get("userId"))
+        transactions_list = aiManager.process_emails(processed_messages)
+        logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {payload.get('emailId')}")
+        
+        # Send processed transactions to mb-backend for inserting into db
+        if len(transactions_list) == 0:
+            logger.info("No transactions extracted from emails, skipping database sync")
+            return {"status": "done"}
+        status = aiManager.syncDatabase(transactions_list)
+        logger.info(f"AI Manager database sync status: {status}")
 
         return {"status": "done"}
     
