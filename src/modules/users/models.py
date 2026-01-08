@@ -14,5 +14,5 @@ class UserDBModel(BaseModel):
 
 
 class UserSyncModel(BaseModel):
-    token: str
+    token: dict
     userId: str

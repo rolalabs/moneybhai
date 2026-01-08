@@ -29,11 +29,11 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
     '''
     try:
         logger.info("Received task processing request")
-        logger.info(request)
         payload = await request.body()
-        logger.info(f"Raw payload: {payload}")
         payload = base64.b64decode(payload).decode("utf-8")
         logger.info(f"Received task payload: {payload}")
+
+        # Authenticate Gmail
         gmailService = authenticateGmail(payload["token"])
 
         # simulate long work (using async sleep instead of blocking sleep)
