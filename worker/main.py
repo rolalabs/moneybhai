@@ -6,7 +6,7 @@ import base64
 
 from sqlalchemy.orm import Session
 from worker.connectors import get_db
-from worker.email import EmailManager
+from worker.operations import EmailManager
 from worker.gmailAuth import authenticateGmail
 from worker.models import TaskModel
 
