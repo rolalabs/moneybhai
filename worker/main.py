@@ -2,6 +2,7 @@
 from fastapi import Depends, FastAPI, Request, HTTPException
 import json
 import logging
+import base64
 
 from sqlalchemy.orm import Session
 from worker.connectors import get_db
@@ -28,6 +29,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
     '''
     try:
         payload = await request.json()
+        payload = base64.b64decode(payload).decode("utf-8")
         logger.info(f"Received task payload: {payload}")
         gmailService = authenticateGmail(payload["token"])
 
