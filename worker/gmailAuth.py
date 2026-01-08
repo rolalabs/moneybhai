@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 # If modifying scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-def authenticateGmail(token: str):
+def authenticateGmail(token: dict):
     """
     Authenticates and returns a Gmail API service instance using OAuth 2.0.
     This function checks for existing user credentials stored in 'token.json'.

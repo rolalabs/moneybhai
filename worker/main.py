@@ -34,7 +34,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         logger.info(f"Received task payload: {payload}")
 
         # Authenticate Gmail
-        gmailService = authenticateGmail(payload["token"])
+        gmailService = authenticateGmail(payload.get("token"))
 
         # simulate long work (using async sleep instead of blocking sleep)
         emailManager = EmailManager(gmailService, db)
