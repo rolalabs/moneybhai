@@ -44,9 +44,11 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         return {"status": "done"}
     
     except (json.JSONDecodeError, ValueError) as e:
+        logger.exception(e)
         logger.error(f"Invalid JSON or base64 payload: {str(e)}")
         raise HTTPException(status_code=400, detail="Invalid payload format")
     except Exception as e:
+        logger.exception(e)
         logger.error(f"Error processing job: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
