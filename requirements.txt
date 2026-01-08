@@ -2,7 +2,7 @@ firebase-admin==7.1.0
 google-api-python-client>=2.117.0
 google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.2.0
-google-genai
+google-genai==1.57.0
 sqlalchemy
 psycopg2-binary
 dotenv
