@@ -28,7 +28,10 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
     7. return status    
     '''
     try:
-        payload = await request.json()
+        logger.info("Received task processing request")
+        logger.info(request)
+        payload = await request.body()
+        logger.info(f"Raw payload: {payload}")
         payload = base64.b64decode(payload).decode("utf-8")
         logger.info(f"Received task payload: {payload}")
         gmailService = authenticateGmail(payload["token"])
