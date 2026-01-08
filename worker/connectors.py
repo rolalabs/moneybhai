@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     WORKER_CLOUD_RUN_URL: str
     DATABASE_URL: str
+    MB_BACKEND_API_URL: str = "http://0.0.0.0:8080/api/"
     API_TOKEN_GITHUB: str = None
     GCP_CREDENTIALS: str = None
 

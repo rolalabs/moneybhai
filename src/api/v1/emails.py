@@ -5,7 +5,8 @@ from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
-from src.modules.emails.model import EmailMessage, EmailMessageORM
+from src.modules.users.operations import fetch_user_by_id
+from src.modules.emails.model import EmailBulkInsertPayload, EmailBulkInsertResponse, EmailMessage, EmailMessageORM
 from src.core.database import get_db
 from src.utils.log import setup_logger
 from src.utils.common import enqueue_worker_task
@@ -65,3 +66,46 @@ async def root():
 #             status_code=500,
 #             content={"message": "Failed to start email watcher", "error": str(e)}
 #         )
+
+
+# add an endpoint that will insert 100 emails at once into the database. the payload will have list of emails
+@router.post("/insert-bulk")
+async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depends(get_db)):
+    """Route to insert bulk emails into the database"""
+    try:
+        # validate user
+        user = fetch_user_by_id(payload.userId, db)
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "User not found"}
+            )
+
+        logger.info(f"Inserting {len(payload.emails)} emails into the database for email: {payload.emailId}")
+
+        email_orm_list = [EmailMessageORM(
+            thread_id=email.thread_id,
+            id=email.id,
+            snippet=email.snippet,
+            date_time=email.date_time,
+            emailSender=email.emailSender,
+            emailId=email.emailId,
+            source=email.source,
+            isTransaction=email.isTransaction,
+            isGeminiParsed=email.isGeminiParsed
+        ) for email in payload.emails]
+
+        db.bulk_save_objects(email_orm_list)
+        db.commit()
+
+        logger.info(f"Inserted {len(payload.emails)} emails into the database.")
+        return JSONResponse(
+            status_code=200,
+            content={"message": f"Inserted {len(payload.emails)} emails successfully", "status": "completed"}
+        )
+    except Exception as e:
+        logger.exception(f"Error inserting bulk emails: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to insert bulk emails", "error": str(e)}
+        )
