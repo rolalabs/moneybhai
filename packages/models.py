@@ -1,17 +1,18 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from typing import Optional
 
 class Transaction(BaseModel):
-    id: str = None
-    amount: float = None
-    transaction_type: str = None
-    source_identifier: str = None
-    source_type: str = None
-    destination: str = None
-    mode: str = None
-    reference_number: str = None
-    emailSender: str = None
-    emailId: str = None
-    date_time: str = None
+    id: Optional[str] = None
+    amount: Optional[float] = None
+    transaction_type: Optional[str] = None
+    source_identifier: Optional[str] = None
+    source_type: str | None = None
+    destination: Optional[str] = None
+    mode: Optional[str] = None
+    reference_number: Optional[str] = None
+    emailSender: Optional[str] = None
+    emailId: Optional[str] = None
+    date_time: Optional[str] = None
 
 class TransactionBulkInsertPayload(BaseModel):
     transactions: list[Transaction]

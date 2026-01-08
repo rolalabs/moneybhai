@@ -2,7 +2,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DEBUG: bool = False
-    GEMINI_API_KEY: str | None = None
     WORKER_CLOUD_RUN_URL: str | None = None
     API_TOKEN_GITHUB: str | None = None
     GCP_CREDENTIALS: str | None = None

@@ -31,19 +31,18 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
         
         for idx, transaction in enumerate(transactionsPayload.transactions):
             try:
-                t: Transaction = Transaction(**transaction)
                 txn = TransactionORM(
-                    id=t.id, 
-                    amount=t.amount,
-                    transaction_type=t.transaction_type,
-                    source_identifier=t.source_identifier,
-                    source_type=t.source_type,
-                    destination=t.destination,
-                    mode=t.mode,
-                    reference_number=t.reference_number,
-                    emailSender=t.emailSender,
-                    emailId=t.emailId,
-                    date_time=t.date_time,
+                    id=transaction.id, 
+                    amount=transaction.amount,
+                    transaction_type=transaction.transaction_type,
+                    source_identifier=transaction.source_identifier,
+                    source_type=transaction.source_type,
+                    destination=transaction.destination,
+                    mode=transaction.mode,
+                    reference_number=transaction.reference_number,
+                    emailSender=transaction.emailSender,
+                    emailId=transaction.emailId,
+                    date_time=transaction.date_time,
                 )
                 txn_orm_list.append(txn)
             except Exception as e:
