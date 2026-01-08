@@ -1,13 +1,8 @@
 from datetime import datetime
 import re
-import psycopg2
 from dateutil import parser
 from sqlalchemy.orm import Session
 from googleapiclient.discovery import Resource
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.exc import IntegrityError
-
-from worker.models import EmailMessageORM
 from worker.log import setup_logger
 
 logger = setup_logger(__name__)
@@ -19,9 +14,8 @@ class EmailManager:
     2. Process emails through llm
     3. Store processed emails in the database
     '''
-    def __init__(self, gmail_service: Resource, db_session: Session):
+    def __init__(self, gmail_service: Resource):
         self.gmail_service: Resource = gmail_service
-        self.db_session: Session = db_session
         self.email_messages = []
 
     def fetch_message_details(self, msg_data, msg_id) -> dict:
@@ -73,7 +67,7 @@ class EmailManager:
             message_list.append(msg_data)
         return message_list, results.get('nextPageToken')
 
-    def process_emails(self, email_messages: list[dict]) -> list[dict]:
+    def fetch_messages_details_list(self, email_messages: list[dict]) -> list[dict]:
         messages_to_insert = []
         for msg in email_messages:
             result = self.fetch_message_details(msg, msg['id'])
@@ -82,35 +76,9 @@ class EmailManager:
         
         return messages_to_insert
 
-    def sync_database(self, processed_emails: list[dict]):
-        try:
-
-            insert_statement = insert(EmailMessageORM).values(processed_emails)
-            on_conflict_statement = insert_statement.on_conflict_do_nothing(
-                index_elements=[EmailMessageORM.id] # Or other unique columns
-            )
-            self.db_session.execute(on_conflict_statement)
-            self.db_session.commit()
-        except IntegrityError as e:
-            self.db_session.rollback()
-            if isinstance(e.orig, psycopg2.errors.UniqueViolation):
-                logger.error("❌ Duplicate entry for a unique field!")
-                # You can raise custom error or skip
-            else:
-                raise  # re-raise if it's another type of IntegrityError
-        except Exception as e:
-            # self.db_session.rollback()
-            logger.error(f"Error syncing database: {str(e)}")
-            raise
-    
-    def fetch_latest_message_from_db(self) -> EmailMessageORM:
-        message = self.db_session.query(EmailMessageORM).order_by(EmailMessageORM.date_time.desc()).first()
-        return message
-    
-
     def execute(self, query: str):
         next_page_token = None
         messages, next_page_token = self.fetch_emails_messages_list(query, next_page_token)
-        processed_messages = self.process_emails(messages)
+        processed_messages = self.fetch_messages_details_list(messages)
         # self.sync_database(processed_messages)
         return processed_messages

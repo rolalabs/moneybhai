@@ -15,19 +15,6 @@ class EmailMessage(BaseModel):
     isGeminiParsed: bool = False  
 
 
-class EmailMessageORM(DB_BASE):
-    __tablename__ = "emails"
-
-    id = Column(String, primary_key=True)
-    thread_id = Column(String)
-    snippet = Column(Text)
-    date_time = Column(DateTime)
-    emailSender = Column(String(128))
-    emailId = Column(String(128))
-    source = Column(String(128), default="ss.saswatsahoo@gmail")
-    isTransaction = Column(Boolean, default=False)
-    isGeminiParsed = Column(Boolean, default=False)
-
 class TaskModel(BaseModel):
     id: str
     token: str
