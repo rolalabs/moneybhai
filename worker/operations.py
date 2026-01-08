@@ -93,7 +93,7 @@ class EmailManager:
             formatted_email_list.append(json.loads(email.model_dump_json()))
 
         response = requests.post(
-            ENV_SETTINGS.MB_BACKEND_API_URL + 'v1/emails/insert-bulk',
+            ENV_SETTINGS.MB_BACKEND_API_URL + 'api/v1/emails/insert-bulk',
             headers={'Content-Type': 'application/json'},
             json={
                 'emails': formatted_email_list,
