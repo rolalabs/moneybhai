@@ -58,7 +58,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         transactions_list: list[dict] = aiManager.process_emails(processed_messages)
 
         # Send processed transactions to mb-backend for inserting into db
-        if len(transactions_list) == 0:
+        if transactions_list is None:
             logger.info("No transactions extracted from emails, skipping database sync")
             return {"status": "done"}
         
