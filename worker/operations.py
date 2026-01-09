@@ -227,7 +227,7 @@ class AIManager:
 
                 txn.emailId = email_details.emailId if email_details else None
                 txn.emailSender = email_details.emailSender if email_details else None
-                txn.date_time = email_details.date_time if email_details else None
+                txn.date_time = email_details.date_time.isoformat() if email_details else None
 
                 transactions_list.append(json.loads(txn.model_dump_json(exclude_none=True)))
             except Exception as e:
