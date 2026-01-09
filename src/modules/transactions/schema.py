@@ -1,6 +1,6 @@
 
 import sqlalchemy
-from sqlalchemy import Column, String, Float, DateTime
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey
 from src.core.database import DB_BASE
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -18,4 +18,4 @@ class TransactionORM(DB_BASE):
     emailSender = Column(String(128))
     emailId = Column(String(128))
     reference_number = Column(String(128))
-    userId = Column(UUID(as_uuid=True), nullable=False)
+    userId = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
