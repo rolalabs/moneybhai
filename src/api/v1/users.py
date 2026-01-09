@@ -1,4 +1,5 @@
 from fastapi.responses import JSONResponse
+from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
 from src.modules.users.models import UserSyncModel
 from src.modules.users.schema import UsersORM
@@ -83,7 +84,8 @@ async def get_transactions_by_userId(userId: str, db: Session = Depends(get_db))
                 status_code=404,
                 content={"message": "User not found"}
             )
-        return user
+        transactions = db.query(TransactionORM).filter(TransactionORM.userId == userId).all()
+        return transactions
     except Exception as e:
         logger.exception(f"Error fetching transactions for userId {userId}: {e}")
         return JSONResponse(
