@@ -5,7 +5,7 @@ from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
-from src.modules.users.operations import fetch_user_by_id
+from src.modules.users.operations import fetchUserById
 from src.modules.emails.model import EmailBulkInsertPayload, EmailBulkInsertResponse, EmailMessage, EmailMessageORM
 from src.core.database import get_db
 from src.utils.log import setup_logger
@@ -74,7 +74,7 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
     """Route to insert bulk emails into the database"""
     try:
         # validate user
-        user = fetch_user_by_id(payload.userId, db)
+        user = fetchUserById(payload.userId, db)
         if not user:
             return JSONResponse(
                 status_code=404,
