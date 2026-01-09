@@ -2,11 +2,11 @@
 import sqlalchemy
 from sqlalchemy import Column, String, Float, DateTime
 from src.core.database import DB_BASE
+from sqlalchemy.dialects.postgresql import UUID
 
 
 class TransactionORM(DB_BASE):
     __tablename__ = 'transactions'
-    __table_args__ = {'extend_existing': True}  
     id = sqlalchemy.Column(String, primary_key=True)
     amount = Column(Float)
     transaction_type = Column(String(128))
@@ -18,3 +18,4 @@ class TransactionORM(DB_BASE):
     emailSender = Column(String(128))
     emailId = Column(String(128))
     reference_number = Column(String(128))
+    userId = Column(UUID(as_uuid=True), nullable=False)
