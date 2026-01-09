@@ -1,4 +1,5 @@
 from fastapi.responses import JSONResponse
+from packages.models import TaskQueuePayload
 from src.modules.users.models import UserSyncModel
 from src.modules.users.schema import UsersORM
 
@@ -51,12 +52,14 @@ async def scrapeEmailsRoute(id: str, userSyncModel: UserSyncModel, db: Session =
                 status_code=404,
                 content={"message": "User not found"}
             )
+        
+        payload: TaskQueuePayload = TaskQueuePayload(
+            email=user.email,
+            userId=str(id),
+            token=userSyncModel.token
+        )
 
-        enqueue_worker_task({
-            "email": user.email,
-            "userId": str(id),
-            "token": userSyncModel.token
-        })
+        enqueue_worker_task(payload.model_dump())
         return JSONResponse(
             status_code=200,
             content={"message": "Email scraping completed successfully", "status": "completed"}
