@@ -70,3 +70,23 @@ async def scrapeEmailsRoute(id: str, userSyncModel: UserSyncModel, db: Session =
             status_code=500,
             content={"message": "Failed to scrape emails", "error": str(e)}
         )
+
+   
+# create an endpoint to fetch transactions by userId
+@router.get("/{userId}/transactions")
+async def get_transactions_by_userId(userId: str, db: Session = Depends(get_db)):
+    """Get transactions by User ID."""
+    try:
+        user = db.query(UsersORM).filter(UsersORM.id == userId).all()
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "User not found"}
+            )
+        return user
+    except Exception as e:
+        logger.exception(f"Error fetching transactions for userId {userId}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to fetch transactions", "error": str(e)}
+        )
