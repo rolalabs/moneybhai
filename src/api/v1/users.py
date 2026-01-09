@@ -1,8 +1,9 @@
 from fastapi.responses import JSONResponse
 from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
-from src.modules.users.models import UserSyncModel
+from src.modules.users.models import UserSyncModel, UserAuthPayload, GmailAuthVerificationResponse
 from src.modules.users.schema import UsersORM
+from src.modules.users.operations import createUser, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
@@ -18,21 +19,39 @@ security = HTTPBasic()
 
 logger = setup_logger(__name__)
 
+@router.post("/auth")
+async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = Depends(get_db)):
+    """
+    1. Verify Auth Token
+    2. Check if user exists or not
+    3. If not, then create in database
+    4. Create gmail auth url
+    5. send in response to user
+    """
+    verificationResponse = verifyGmailToken(payload.token)
+    userDetails = GmailAuthVerificationResponse(**verificationResponse)
+    user = fetchUserByEmail(email=userDetails.email, db=db)
+    if not user:
+        # create user
+        createUser(email=userDetails.email, name=userDetails.name, db=db)
+    
+    gmail_access_url = generateGmailAccessUrl()
+
+    return {
+        "gmailAccessUrl": gmail_access_url,
+        "user": {
+            "email": userDetails.email,
+            "name": userDetails.name,
+            "picture": userDetails.picture
+        }
+    }
+    
 
 @router.get("/all")
 async def list_users(db: Session = Depends(get_db)):
     """List all users in the database."""
     users = db.query(UsersORM).all()
     return users
-
-@router.post("/")
-async def create_user(email: str, name: str, db: Session = Depends(get_db)):
-    """Create a new user in the database."""
-    new_user = UsersORM(email=email, name=name)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
 
 @router.get("/{id}")
 async def get_user(id: str, db: Session = Depends(get_db)):
