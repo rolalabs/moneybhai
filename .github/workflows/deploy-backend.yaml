@@ -51,6 +51,7 @@ jobs:
           API_TOKEN_GITHUB: "${{ secrets.API_TOKEN_GITHUB }}"
           GMAIL_WEB_CLIENT_ID: "${{ secrets.GMAIL_WEB_CLIENT_ID }}"
           GMAIL_WEB_CLIENT_SECRET: "${{ secrets.GMAIL_WEB_CLIENT_SECRET }}"
+          MB_BACKEND_API_URL: "${{ vars.MB_BACKEND_API_URL }}"
           EOF
 
       - name: Deploy Worker to Cloud Run

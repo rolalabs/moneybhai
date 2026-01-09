@@ -58,7 +58,7 @@ def generateGmailAccessUrl() -> str:
         scopes=SCOPES
     )
 
-    flow.redirect_uri = "https://your-backend.com/auth/google/callback"
+    flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}/api/v1/users/auth/callback"
 
     auth_url, state = flow.authorization_url(
         access_type="offline",

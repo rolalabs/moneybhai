@@ -45,7 +45,16 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
             "picture": userDetails.picture
         }
     }
-    
+
+@router.get("/auth/callback")
+async def gmail_auth_callback(code: str):
+    """
+    Handle Gmail OAuth2 callback
+    """
+    # This is a placeholder implementation.
+    # In a real implementation, you would exchange the code for tokens
+    # and possibly store the refresh token for future use.
+    return {"message": "Gmail OAuth2 callback received", "code": code}
 
 @router.get("/all")
 async def list_users(db: Session = Depends(get_db)):

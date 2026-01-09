@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DEBUG: bool = False
+    MB_BACKEND_API_URL: str | None = None
     GMAIL_WEB_CLIENT_ID: str | None = None
     GMAIL_WEB_CLIENT_SECRET: str | None = None
     WORKER_CLOUD_RUN_URL: str | None = None
