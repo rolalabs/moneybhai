@@ -244,7 +244,7 @@ class AIManager:
         Send in batch of 50
         '''
         response = requests.post(
-            ENV_SETTINGS.MB_BACKEND_API_URL + 'v1/transactions/bulk-insert',
+            ENV_SETTINGS.MB_BACKEND_API_URL + 'api/v1/transactions/bulk-insert',
             headers={'Content-Type': 'application/json'},
             json={
                 'transactions': transactions_list,
