@@ -202,7 +202,7 @@ class AIManager:
 
             if not snippet:
                 continue
-
+            logger.info(f"Preparing email ID {id} for parsing. Snippet: {snippet}")
             snippet = f"ID {id}:\n{snippet}"
             message_to_parse_list.append(snippet)
             # mark_email_as_gemini_parsed(msg.thread_id)
