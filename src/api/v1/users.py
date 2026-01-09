@@ -3,7 +3,7 @@ from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
 from src.modules.users.models import UserSyncModel, UserAuthPayload, GmailAuthVerificationResponse
 from src.modules.users.schema import UsersORM
-from src.modules.users.operations import createUser, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl
+from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
@@ -30,12 +30,12 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
     """
     verificationResponse = verifyGmailToken(payload.token)
     userDetails = GmailAuthVerificationResponse(**verificationResponse)
-    user = fetchUserByEmail(email=userDetails.email, db=db)
+    user: UsersORM = fetchUserByEmail(email=userDetails.email, db=db)
     if not user:
         # create user
         createUser(email=userDetails.email, name=userDetails.name, db=db)
     
-    gmail_access_url = generateGmailAccessUrl()
+    gmail_access_url = generateGmailAccessUrl(str(user.id))
 
     return {
         "gmailAccessUrl": gmail_access_url,
@@ -46,14 +46,13 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
         }
     }
 
-@router.get("/auth/callback")
-async def gmail_auth_callback(code: str):
+@router.get("/{userId}/auth-callback")
+async def gmail_auth_callback(userId: str, code: str, state: str | None = None, db: Session = Depends(get_db)):
     """
     Handle Gmail OAuth2 callback
     """
-    # This is a placeholder implementation.
-    # In a real implementation, you would exchange the code for tokens
-    # and possibly store the refresh token for future use.
+    token = gmailExchangeCodeForToken(userId, code, db)
+
     return {"message": "Gmail OAuth2 callback received", "code": code}
 
 @router.get("/all")

@@ -1,3 +1,4 @@
+from datetime import datetime
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -14,10 +15,22 @@ def fetchUserById(user_id: str, db: Session):
         logger.error(f"User with ID {user_id} not found.") 
     return user
 
-def fetchUserByEmail(email: str, db: Session):
+def fetchUserByEmail(email: str, db: Session) -> UsersORM | None:
     user = db.query(UsersORM).filter(UsersORM.email == email).first()
     if not user:
         logger.error(f"User with email {email} not found.") 
+    return user
+
+def updateUserById(userId: str, update_data: dict, db: Session):
+    user = db.query(UsersORM).filter(UsersORM.id == userId).first()
+    if not user:
+        logger.error(f"User with ID {userId} not found for update.")
+        return None
+    for key, value in update_data.items():
+        setattr(user, key, value)
+    db.commit()
+    db.refresh(user)
+    logger.info(f"Updated user with ID {userId}.")
     return user
 
 def createUser(email: str, name: str, db: Session):
@@ -42,7 +55,16 @@ def verifyGmailToken(token: str) -> dict:
         raise
 
 
-def generateGmailAccessUrl() -> str:
+def generateGmailAccessUrl(userId: str) -> str:
+    flow = generateOAuthFlow(userId)
+    auth_url, state = flow.authorization_url(
+        access_type="offline",
+        prompt="consent",
+        include_granted_scopes="true"
+    )
+    return auth_url
+
+def generateOAuthFlow(userId: str) -> Flow:
 
     SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
@@ -58,11 +80,29 @@ def generateGmailAccessUrl() -> str:
         scopes=SCOPES
     )
 
-    flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}/api/v1/users/auth/callback"
+    flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}/api/v1/users/{userId}/auth-callback"
+    return flow
 
-    auth_url, state = flow.authorization_url(
-        access_type="offline",
-        prompt="consent",
-        include_granted_scopes="true"
-    )
-    return auth_url
+def gmailExchangeCodeForToken(userId: str, code: str, db: Session) -> dict:
+    flow = generateOAuthFlow(userId)
+    try:
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        logger.info("Exchanged code for Gmail access token successfully.")
+
+        updatePayload = {
+            "gmailRefreshToken": credentials.refresh_token,
+            "gmailRefreshTokenCreatedAt": datetime.now()
+        }
+        updatedUser = updateUserById(userId, updatePayload, db)
+        return {
+            "access_token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
+            "scopes": credentials.scopes
+        }
+    except Exception as e:
+        logger.error(f"Failed to exchange code for token: {e}")
+        raise

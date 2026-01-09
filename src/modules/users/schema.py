@@ -13,6 +13,8 @@ class UsersORM(DB_BASE):
     email = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=False)
     createdAt = Column(DateTime, default=datetime.now, nullable=False)
+    gmailRefreshToken = Column(String, nullable=True)
+    gmailRefreshTokenCreatedAt = Column(DateTime, nullable=True)
 
 # create table on startup
 # DB_BASE.metadata.create_all(bind=DB_BASE.metadata.bind, checkfirst=True)
