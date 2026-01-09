@@ -5,6 +5,7 @@ import logging
 import base64
 
 from sqlalchemy.orm import Session
+from packages.models import TaskQueuePayload
 from worker.connectors import get_db
 from worker.operations import AIManager, EmailManager
 from worker.gmailAuth import authenticateGmail
@@ -34,27 +35,28 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         payload = json.loads(payload)  # Parse the JSON string to dictionary
         logger.info(f"Received task payload: {payload}")
 
+        tasksPayload: TaskQueuePayload = TaskQueuePayload(**payload)  # Validate payload structure
+
         # Authenticate Gmail
-        gmailService = authenticateGmail(payload.get("token"))
+        gmailService = authenticateGmail(tasksPayload.token)
 
         # Fetch emails and process it
-        emailManager = EmailManager(gmailService, payload.get("email"), payload.get("userId"))
+        emailManager = EmailManager(gmailService, tasksPayload.email, tasksPayload.userId)
 
         next_page_token = None
         messages, next_page_token = emailManager.fetch_emails_messages_list("is:unread", next_page_token)
-        logger.info(f"Fetched {len(messages)} unread emails for userId: {payload.get('userId')}")
-
+        logger.info(f"Fetched {len(messages)} unread emails for userId: {tasksPayload.userId}")
         processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
-        logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {payload.get('userId')}")
+        logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {tasksPayload.userId}")
         
         # send emails to mb-backend for inserting into db
         statusCode: int = emailManager.sync_database(processed_messages)
         logger.info(f"Database sync status code: {statusCode}")
 
         # Process LLM through Gemini and update the database
-        aiManager: AIManager = AIManager(email=payload.get("email"), user_id=payload.get("userId"))
+        aiManager: AIManager = AIManager(email=tasksPayload.email, user_id=tasksPayload.userId)
         transactions_list: list[dict] = aiManager.process_emails(processed_messages)
-        logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {payload.get('emailId')}")
+        logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
 
         # Send processed transactions to mb-backend for inserting into db
         if len(transactions_list) == 0:
