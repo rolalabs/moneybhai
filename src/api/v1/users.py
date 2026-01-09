@@ -54,7 +54,7 @@ async def scrapeEmailsRoute(id: str, userSyncModel: UserSyncModel, db: Session =
 
         enqueue_worker_task({
             "email": user.email,
-            "id": str(id),
+            "userId": str(id),
             "token": userSyncModel.token
         })
         return JSONResponse(
