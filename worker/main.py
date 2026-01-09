@@ -56,12 +56,13 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         # Process LLM through Gemini and update the database
         aiManager: AIManager = AIManager(email=tasksPayload.email, user_id=tasksPayload.userId)
         transactions_list: list[dict] = aiManager.process_emails(processed_messages)
-        logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
 
         # Send processed transactions to mb-backend for inserting into db
         if len(transactions_list) == 0:
             logger.info("No transactions extracted from emails, skipping database sync")
             return {"status": "done"}
+        
+        logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
         status = aiManager.syncDatabase(transactions_list)
         logger.info(f"AI Manager database sync status: {status}")
 
