@@ -3,6 +3,7 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from sqlalchemy.orm import Session
+from packages.enums import GMAIL_SCOPES
 from src.modules.users.schema import UsersORM
 from src.core.environment import ENV_SETTINGS
 from src.utils.log import setup_logger
@@ -67,8 +68,6 @@ def generateGmailAccessUrl(userId: str) -> str:
 
 def generateOAuthFlow(userId: str) -> Flow:
 
-    SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-
     flow = Flow.from_client_config(
         {
             "web": {
@@ -78,7 +77,7 @@ def generateOAuthFlow(userId: str) -> Flow:
                 "token_uri": "https://oauth2.googleapis.com/token"
             }
         },
-        scopes=SCOPES
+        scopes=GMAIL_SCOPES
     )
 
     flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/auth/callback"

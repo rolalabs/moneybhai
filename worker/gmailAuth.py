@@ -1,8 +1,7 @@
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-# If modifying scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+from packages.enums import GMAIL_SCOPES
 
 def authenticateGmail(token: dict):
     """
@@ -19,7 +18,7 @@ def authenticateGmail(token: dict):
     """
 
     creds = None
-    creds = Credentials.from_authorized_user_info(token, SCOPES)
+    creds = Credentials.from_authorized_user_info(token, GMAIL_SCOPES)
     # if not creds or not creds.valid:
     #     if creds and creds.expired and creds.refresh_token:
     #         creds.refresh(Request())
