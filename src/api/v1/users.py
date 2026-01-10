@@ -47,10 +47,12 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
     }
 
 @router.get("/auth/callback")
-async def gmail_auth_callback(userId: str, code: str, db: Session = Depends(get_db)):
+async def gmail_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
     """
     Handle Gmail OAuth2 callback
     """
+    # TODO: state is set as userId
+    userId = state
     token = gmailExchangeCodeForToken(userId, code, db)
 
     return {"message": "Gmail OAuth2 callback received", "code": code}

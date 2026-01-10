@@ -60,9 +60,10 @@ def generateGmailAccessUrl(userId: str) -> str:
     auth_url, state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
-        include_granted_scopes="true"
+        include_granted_scopes="true",
+        state=userId,
     )
-    return f"{auth_url}&userId={userId}"
+    return auth_url
 
 def generateOAuthFlow(userId: str) -> Flow:
 
@@ -84,6 +85,7 @@ def generateOAuthFlow(userId: str) -> Flow:
     return flow
 
 def gmailExchangeCodeForToken(userId: str, code: str, db: Session) -> dict:
+
     flow = generateOAuthFlow(userId)
     try:
         flow.fetch_token(code=code)
