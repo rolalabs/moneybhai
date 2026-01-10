@@ -1,9 +1,11 @@
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+from worker.connectors import ENV_SETTINGS
 
 from packages.enums import GMAIL_SCOPES
 
-def authenticateGmail(token: dict):
+def authenticateGmail(refresh_token: str):
     """
     Authenticates and returns a Gmail API service instance using OAuth 2.0.
     This function checks for existing user credentials stored in 'token.json'.
@@ -17,14 +19,16 @@ def authenticateGmail(token: dict):
         google.auth.exceptions.RefreshError: If the credentials cannot be refreshed.
     """
 
-    creds = None
-    creds = Credentials.from_authorized_user_info(token, GMAIL_SCOPES)
-    # if not creds or not creds.valid:
-    #     if creds and creds.expired and creds.refresh_token:
-    #         creds.refresh(Request())
-    #     else:
-    #         flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-    #         creds = flow.run_local_server(port=0)
-    #     with open('token.json', 'w') as token:
-    #         token.write(creds.to_json())
+
+    creds = Credentials(
+        token=None,  # will be filled after refresh
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=ENV_SETTINGS.GMAIL_WEB_CLIENT_ID,
+        client_secret=ENV_SETTINGS.GMAIL_WEB_CLIENT_SECRET,
+        scopes=GMAIL_SCOPES
+    )
+
+    creds.refresh(Request())
+
     return build('gmail', 'v1', credentials=creds)

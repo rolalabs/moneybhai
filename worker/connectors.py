@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     MB_BACKEND_API_URL: str = "http://0.0.0.0:8080/api/"
     API_TOKEN_GITHUB: str = None
     GCP_CREDENTIALS: str = None
+    GMAIL_WEB_CLIENT_ID: str = None
+    GMAIL_WEB_CLIENT_SECRET: str = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -86,7 +86,7 @@ async def scrapeEmailsRoute(id: str, userSyncModel: UserSyncModel, db: Session =
         payload: TaskQueuePayload = TaskQueuePayload(
             email=user.email,
             userId=str(id),
-            token=userSyncModel.token
+            token=user.gmailRefreshToken
         )
 
         enqueue_worker_task(payload.model_dump())

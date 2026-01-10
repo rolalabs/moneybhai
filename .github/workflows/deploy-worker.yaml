@@ -50,6 +50,8 @@ jobs:
           WORKER_CLOUD_RUN_URL: "${{ vars.WORKER_CLOUD_RUN_URL }}"
           API_TOKEN_GITHUB: "${{ secrets.API_TOKEN_GITHUB }}"
           MB_BACKEND_API_URL: "${{ vars.MB_BACKEND_API_URL }}"
+          GMAIL_WEB_CLIENT_ID: "${{ secrets.GMAIL_WEB_CLIENT_ID }}"
+          GMAIL_WEB_CLIENT_SECRET: "${{ secrets.GMAIL_WEB_CLIENT_SECRET }}"
           EOF
 
       - name: Deploy Worker to Cloud Run
