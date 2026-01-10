@@ -42,7 +42,9 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
         "user": {
             "email": userDetails.email,
             "name": userDetails.name,
-            "picture": userDetails.picture
+            "picture": userDetails.picture,
+            "id": str(user.id),
+            "gmailRefreshToken": user.gmailRefreshToken
         }
     }
 
