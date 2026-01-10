@@ -33,7 +33,7 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
     user: UsersORM = fetchUserByEmail(email=userDetails.email, db=db)
     if not user:
         # create user
-        createUser(email=userDetails.email, name=userDetails.name, db=db)
+        user = createUser(email=userDetails.email, name=userDetails.name, db=db)
     
     gmail_access_url = generateGmailAccessUrl(str(user.id))
 
