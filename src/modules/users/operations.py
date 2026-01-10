@@ -80,7 +80,7 @@ def generateOAuthFlow(userId: str) -> Flow:
         scopes=SCOPES
     )
 
-    flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}/api/v1/users/auth/callback"
+    flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/auth/callback"
     return flow
 
 def gmailExchangeCodeForToken(userId: str, code: str, db: Session) -> dict:
