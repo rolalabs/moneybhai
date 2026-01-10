@@ -74,8 +74,8 @@ async def get_user(id: str, db: Session = Depends(get_db)):
     return user
 
     
-@router.post("/{id}/synchronize", response_model=dict)
-async def scrapeEmailsRoute(id: str, userSyncModel: UserSyncModel, db: Session = Depends(get_db)):
+@router.get("/{id}/synchronize", response_model=dict)
+async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
     """Route to scrape emails immediately"""
     try:
         user = db.query(UsersORM).filter(UsersORM.id == id).first()
