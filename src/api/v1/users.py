@@ -1,7 +1,7 @@
 from fastapi.responses import JSONResponse
 from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
-from src.modules.users.models import UserSyncModel, UserAuthPayload, GmailAuthVerificationResponse
+from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse
 from src.modules.users.schema import UsersORM
 from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl
 

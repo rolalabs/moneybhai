@@ -4,6 +4,8 @@ from datetime import datetime
 from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert
 from fastapi import Depends
 from src.modules.users.operations import fetchUserById
 from src.modules.emails.model import EmailBulkInsertPayload, EmailBulkInsertResponse, EmailMessage, EmailMessageORM
@@ -83,25 +85,50 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
 
         logger.info(f"Inserting {len(payload.emails)} emails into the database for email: {payload.emailId}")
 
-        email_orm_list = [EmailMessageORM(
-            thread_id=email.thread_id,
-            id=email.id,
-            snippet=email.snippet,
-            date_time=email.date_time,
-            emailSender=email.emailSender,
-            emailId=email.emailId,
-            source=email.source,
-            isTransaction=email.isTransaction,
-            isGeminiParsed=email.isGeminiParsed
-        ) for email in payload.emails]
-
-        db.bulk_save_objects(email_orm_list)
+        # Create ORM objects for type safety
+        email_orm_list = []
+        for email in payload.emails:
+            email_orm = EmailMessageORM(
+                thread_id=email.thread_id,
+                id=email.id,
+                snippet=email.snippet,
+                date_time=email.date_time,
+                emailSender=email.emailSender,
+                emailId=email.emailId,
+                source=email.source,
+                isTransaction=email.isTransaction,
+                isGeminiParsed=email.isGeminiParsed
+            )
+            email_orm_list.append(email_orm)
+        
+        # Convert ORM objects to dictionaries for bulk insert
+        email_data = []
+        for orm_obj in email_orm_list:
+            obj_dict = {}
+            for col in EmailMessageORM.__table__.columns:
+                obj_dict[col.name] = getattr(orm_obj, col.name)
+            email_data.append(obj_dict)
+        
+        # Use PostgreSQL's ON CONFLICT DO NOTHING to skip duplicates
+        stmt = insert(EmailMessageORM).values(email_data)
+        stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+        
+        result = db.execute(stmt)
         db.commit()
+        
+        inserted_count = result.rowcount
+        skipped_count = len(payload.emails) - inserted_count
 
-        logger.info(f"Inserted {len(payload.emails)} emails into the database.")
+        logger.info(f"Inserted {inserted_count} emails, skipped {skipped_count} duplicates.")
         return JSONResponse(
             status_code=200,
-            content={"message": f"Inserted {len(payload.emails)} emails successfully", "status": "completed"}
+            content={
+                "message": f"Inserted {inserted_count} emails successfully, skipped {skipped_count} duplicates",
+                "status": "completed",
+                "inserted": inserted_count,
+                "skipped": skipped_count,
+                "total": len(payload.emails)
+            }
         )
     except Exception as e:
         logger.exception(f"Error inserting bulk emails: {e}")
