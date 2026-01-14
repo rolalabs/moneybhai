@@ -3,5 +3,5 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        additional_dependencies: [sqlalchemy, types-sqlalchemy]
+        additional_dependencies: [sqlalchemy]
         args: [--config-file=pyproject.toml]
