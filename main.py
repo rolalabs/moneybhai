@@ -57,7 +57,7 @@ async def log_requests_responses(request: Request, call_next):
         except Exception as e:
             request_log["body_error"] = str(e)
     
-    logger.info(json.dumps(request_log, indent=2))
+    logger.info(json.dumps(request_log))
     
     # Process request and get response
     response = await call_next(request)
@@ -74,7 +74,7 @@ async def log_requests_responses(request: Request, call_next):
         "headers": dict(response.headers),
     }
     
-    logger.info(json.dumps(response_log, indent=2))
+    logger.info(json.dumps(response_log))
     
     return response
 
