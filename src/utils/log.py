@@ -1,24 +1,31 @@
 
 import logging
+import sys
+from pythonjsonlogger import jsonlogger
 
 def setup_logger(name="app", level=logging.INFO):
     '''
-    Maintain a log file and append all the logs to that file
+    Setup logger with structured JSON output for Google Cloud Logging.
     '''
 
     logger = logging.getLogger(name)
     if not logger.handlers:
-        formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s")
+        # Console handler for structured logging (stdout)
+        console_handler = logging.StreamHandler(sys.stdout)
         
-        # File handler
+        # Use JSON formatter for Google Cloud structured logging
+        formatter = jsonlogger.JsonFormatter(
+            '%(asctime)s %(name)s %(levelname)s %(message)s',
+            timestamp=True
+        )
+        
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        # File handler with JSON formatting
         file_handler = logging.FileHandler("app.log")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-        
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
         
         logger.setLevel(level)
     return logger

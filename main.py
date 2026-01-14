@@ -29,8 +29,8 @@ async def log_requests_responses(request: Request, call_next):
     # Log incoming request
     start_time = time.time()
     
-    # Prepare request log structure
-    request_log = {
+    # Log structured request data
+    extra_fields = {
         "type": "REQUEST",
         "method": request.method,
         "path": request.url.path,
@@ -51,13 +51,13 @@ async def log_requests_responses(request: Request, call_next):
             # Try to parse as JSON
             try:
                 body_json = json.loads(body.decode())
-                request_log["body"] = body_json
+                extra_fields["body"] = body_json
             except:
-                request_log["body"] = body.decode()
+                extra_fields["body"] = body.decode()
         except Exception as e:
-            request_log["body_error"] = str(e)
+            extra_fields["body_error"] = str(e)
     
-    logger.info(json.dumps(request_log))
+    logger.info("Incoming request", extra=extra_fields)
     
     # Process request and get response
     response = await call_next(request)
@@ -65,8 +65,8 @@ async def log_requests_responses(request: Request, call_next):
     # Calculate processing time
     process_time = time.time() - start_time
     
-    # Prepare response log structure
-    response_log = {
+    # Log structured response data
+    extra_fields = {
         "type": "RESPONSE",
         "status_code": response.status_code,
         "path": request.url.path,
@@ -74,7 +74,7 @@ async def log_requests_responses(request: Request, call_next):
         "headers": dict(response.headers),
     }
     
-    logger.info(json.dumps(response_log))
+    logger.info("Request completed", extra=extra_fields)
     
     return response
 
