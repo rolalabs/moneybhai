@@ -1,5 +1,5 @@
 from fastapi.responses import JSONResponse
-from packages.models import Transaction, TransactionBulkInsertPayload
+from packages.models import TransactionBulkInsertPayload
 from src.modules.transactions.schema import TransactionORM
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
