@@ -26,9 +26,8 @@ async def get_transaction(id: str, db: Session = Depends(get_db)):
 async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPayload, db: Session = Depends(get_db)):
     """Bulk insert transactions into the database."""
     try:
-        txn_orm_list = []
-        failed_transactions = []
-        
+        txn_orm_list: list[TransactionORM] = []
+        failed_count = 0
         for idx, transaction in enumerate(transactionsPayload.transactions):
             try:
                 txn = TransactionORM(
@@ -43,19 +42,18 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
                     emailSender=transaction.emailSender,
                     emailId=transaction.emailId,
                     date_time=transaction.date_time,
-                    user_id=transactionsPayload.userId
+                    userId=transactionsPayload.userId
                 )
                 txn_orm_list.append(txn)
             except Exception as e:
-                failed_transactions.append({"index": idx, "error": str(e), "transaction_id": transaction.get("id", "unknown")})
-                logger.warning(f"Failed to process transaction at index {idx}: {e}")
+                failed_count += 1
+                logger.warning(f"Failed to process transaction at index {idx}: {e}. Failed transaction ID: {transaction.id}")
         
         if txn_orm_list:
             db.bulk_save_objects(txn_orm_list)
             db.commit()
         
         inserted_count = len(txn_orm_list)
-        failed_count = len(failed_transactions)
         
         logger.info(f"Inserted {inserted_count} transactions. Failed: {failed_count}")
         
@@ -66,7 +64,6 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
                 "status": "success" if failed_count == 0 else "partial_success",
                 "inserted": inserted_count,
                 "failed": failed_count,
-                "failed_transactions": failed_transactions if failed_transactions else None
             }
         )
     except Exception as e:
