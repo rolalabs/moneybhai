@@ -3,10 +3,11 @@ from fastapi import Depends, FastAPI, Request, HTTPException
 import json
 import logging
 import base64
+import requests
 
 from sqlalchemy.orm import Session
 from packages.models import TaskQueuePayload
-from worker.connectors import get_db
+from worker.connectors import get_db, ENV_SETTINGS
 from worker.operations import AIManager, EmailManager
 from worker.gmailAuth import authenticateGmail
 from worker.models import EmailMessage, TaskModel
@@ -16,6 +17,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+def release_sync_lock(user_id: str) -> None:
+    """Release sync lock for a user after task completion or error."""
+    try:
+        unlock_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}/unlock"
+        unlock_response = requests.post(unlock_url)
+        logger.info(f"Sync lock released for user {user_id}, status: {unlock_response.status_code}")
+    except Exception as unlock_error:
+        logger.error(f"Failed to release sync lock for user {user_id}: {unlock_error}")
 
 @app.post("/tasks/process")
 async def processTask(request: Request, db: Session = Depends(get_db)):
@@ -28,12 +38,14 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
     6. store results in db
     7. return status    
     '''
+    user_id = None
     try:
         logger.info("Received task processing request")
         payload = await request.body()
         payload = base64.b64decode(payload).decode("utf-8")
         payload = json.loads(payload)  # Parse the JSON string to dictionary
         logger.info(f"Received task payload: {payload}")
+        user_id = payload.get("userId")
 
         tasksPayload: TaskQueuePayload = TaskQueuePayload(**payload)  # Validate payload structure
 
@@ -44,7 +56,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         emailManager = EmailManager(gmailService, tasksPayload.email, tasksPayload.userId)
 
         next_page_token = None
-        messages, next_page_token = emailManager.fetch_emails_messages_list("is:unread", next_page_token)
+        messages, next_page_token = emailManager.fetch_emails_messages_list("is:unread", next_page_token, max_results=10)
         logger.info(f"Fetched {len(messages)} unread emails for userId: {tasksPayload.userId}")
         processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
         logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {tasksPayload.userId}")
@@ -76,6 +88,10 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         logger.exception(e)
         logger.error(f"Error processing job: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        # TODO: figure out way to unlock user if user id is not present
+        if user_id:
+            release_sync_lock(user_id)
 
 # Add health check api
 @app.get("/health")

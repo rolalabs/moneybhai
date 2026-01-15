@@ -3,7 +3,7 @@ from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
 from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse
 from src.modules.users.schema import UsersORM
-from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl
+from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl, setSyncLock, releaseSyncLock
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
@@ -85,6 +85,12 @@ async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
                 content={"message": "User not found"}
             )
         
+        if not setSyncLock(id, db):
+            return JSONResponse(
+                status_code=204,
+                content={"message": "Already syncing"}
+            )
+        
         payload: TaskQueuePayload = TaskQueuePayload(
             email=user.email,
             userId=str(id),
@@ -98,12 +104,35 @@ async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
         )
     except Exception as e:
         logger.exception(f"Error during email scraping: {e}")
+        releaseSyncLock(id, db)
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to scrape emails", "error": str(e)}
         )
 
-   
+@router.post("/{id}/unlock")
+async def unlockSyncRoute(id: str, db: Session = Depends(get_db)):
+    """Release sync lock for user - to be called by worker after completion"""
+    try:
+        user = db.query(UsersORM).filter(UsersORM.id == id).first()
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "User not found"}
+            )
+        
+        releaseSyncLock(id, db)
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Sync lock released successfully"}
+        )
+    except Exception as e:
+        logger.exception(f"Error releasing sync lock: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to release sync lock", "error": str(e)}
+        )
+
 # create an endpoint to fetch transactions by userId
 @router.get("/{userId}/transactions")
 async def get_transactions_by_userId(userId: str, db: Session = Depends(get_db)):

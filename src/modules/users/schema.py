@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime
+from sqlalchemy import String, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Column
 from src.core.database import DB_BASE
@@ -15,6 +15,7 @@ class UsersORM(DB_BASE):
     createdAt = Column(DateTime, default=datetime.now, nullable=False)
     gmailRefreshToken = Column(String, nullable=True)
     gmailRefreshTokenCreatedAt = Column(DateTime, nullable=True)
+    isSyncing = Column(Boolean, default=False, nullable=False)
 
 # create table on startup
 # DB_BASE.metadata.create_all(bind=DB_BASE.metadata.bind, checkfirst=True)
