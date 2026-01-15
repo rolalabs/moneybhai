@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 import uuid
+from datetime import datetime
+from typing import Optional
 
 class CreateUser(BaseModel):
     email: str
@@ -19,6 +21,11 @@ class UserSyncModel(BaseModel):
 class UserAuthPayload(BaseModel):
     token: str
 
+class UserUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    lastSyncedAt: Optional[datetime] = None
+    isSyncing: Optional[bool] = None
+
 class GmailAuthVerificationResponse(BaseModel):
     email: str
     email_verified: bool
@@ -32,6 +39,3 @@ class GmailAuthVerificationResponse(BaseModel):
     aud: str
     azp: str
     iss: str
-
-
-    

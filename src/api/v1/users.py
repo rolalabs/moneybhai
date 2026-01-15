@@ -1,9 +1,9 @@
 from fastapi.responses import JSONResponse
 from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
-from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse
+from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse, UserUpdatePayload
 from src.modules.users.schema import UsersORM
-from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl, setSyncLock, releaseSyncLock
+from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl, setSyncLock, releaseSyncLock, updateUserById
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
@@ -72,6 +72,36 @@ async def get_user(id: str, db: Session = Depends(get_db)):
     if not user:
         return {"error": "User not found"}
     return user
+
+@router.put("/{id}")
+async def update_user(id: str, payload: UserUpdatePayload, db: Session = Depends(get_db)):
+    """Update user by ID."""
+    try:
+        user = db.query(UsersORM).filter(UsersORM.id == id).first()
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "User not found"}
+            )
+        
+        update_data = payload.model_dump(exclude_unset=True)
+        if not update_data:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "No fields to update"}
+            )
+        
+        updated_user = updateUserById(id, update_data, db)
+        return JSONResponse(
+            status_code=200,
+            content={"message": "User updated successfully", "user": {"id": str(updated_user.id)}}
+        )
+    except Exception as e:
+        logger.exception(f"Error updating user {id}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to update user", "error": str(e)}
+        )
 
     
 @router.get("/{id}/synchronize", response_model=dict)
