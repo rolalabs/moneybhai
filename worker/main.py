@@ -27,6 +27,32 @@ def release_sync_lock(user_id: str) -> None:
     except Exception as unlock_error:
         logger.error(f"Failed to release sync lock for user {user_id}: {unlock_error}")
 
+def fetch_user_details(user_id: str) -> dict:
+    """Fetch user details from backend API."""
+    try:
+        user_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}"
+        response = requests.get(user_url)
+        if response.status_code == 200:
+            return response.json()
+        logger.error(f"Failed to fetch user details, status: {response.status_code}")
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching user details for user {user_id}: {e}")
+        return None
+
+def update_last_synced_at(user_id: str, last_synced_at: str) -> None:
+    """Update lastSyncedAt for a user."""
+    try:
+        update_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}"
+        response = requests.put(
+            update_url,
+            headers={'Content-Type': 'application/json'},
+            json={'lastSyncedAt': last_synced_at}
+        )
+        logger.info(f"Updated lastSyncedAt for user {user_id}, status: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Failed to update lastSyncedAt for user {user_id}: {e}")
+
 @app.post("/tasks/process")
 async def processTask(request: Request, db: Session = Depends(get_db)):
     '''
@@ -49,17 +75,29 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
 
         tasksPayload: TaskQueuePayload = TaskQueuePayload(**payload)  # Validate payload structure
 
+        # Fetch user details to get lastSyncedAt
+        user_details = fetch_user_details(tasksPayload.userId)
+        if not user_details:
+            raise Exception("Failed to fetch user details")
+        
+        last_synced_at = user_details.get('lastSyncedAt')
+        logger.info(f"User lastSyncedAt: {last_synced_at}")
+
         # Authenticate Gmail
         gmailService = authenticateGmail(tasksPayload.token)
 
         # Fetch emails and process it
         emailManager = EmailManager(gmailService, tasksPayload.email, tasksPayload.userId)
 
+        # Build query based on lastSyncedAt
+        query = emailManager.build_gmail_query(last_synced_at)
+        logger.info(f"Gmail query: {query}")
+        
         next_page_token = None
-        messages, next_page_token = emailManager.fetch_emails_messages_list("is:unread", next_page_token, max_results=10)
-        logger.info(f"Fetched {len(messages)} unread emails for userId: {tasksPayload.userId}")
+        messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=100)
+        logger.info(f"Fetched {len(messages)} emails for userId: {tasksPayload.userId}")
         processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
-        logger.info(f"Fetched {len(processed_messages)} unread emails for userId: {tasksPayload.userId}")
+        logger.info(f"Processed {len(processed_messages)} emails for userId: {tasksPayload.userId}")
         
         # send emails to mb-backend for inserting into db
         statusCode: int = emailManager.sync_database(processed_messages)
@@ -77,6 +115,13 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
         status = aiManager.syncDatabase(transactions_list)
         logger.info(f"AI Manager database sync status: {status}")
+
+        # Update lastSyncedAt to the latest email timestamp
+        if processed_messages:
+            latest_email_time = max(msg.date_time for msg in processed_messages if msg.date_time)
+            if latest_email_time:
+                update_last_synced_at(tasksPayload.userId, latest_email_time.isoformat())
+                logger.info(f"Updated lastSyncedAt to {latest_email_time.isoformat()}")
 
         return {"status": "done"}
     

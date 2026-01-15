@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import json
 from dateutil import parser
@@ -23,6 +23,23 @@ class EmailManager:
         self.gmail_service: Resource = gmail_service
         self.email = email
         self.user_id = user_id
+
+    def build_gmail_query(self, last_synced_at: str = None) -> str:
+        """Build Gmail search query based on lastSyncedAt."""
+        if last_synced_at:
+            # Convert ISO format to Gmail date format (YYYY/MM/DD)
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(last_synced_at.replace('Z', '+00:00'))
+                date_str = dt.strftime('%Y/%m/%d')
+                return f"after:{date_str}"
+            except Exception as e:
+                logger.error(f"Error parsing lastSyncedAt: {e}")
+    
+        # If no lastSyncedAt, use today - 7 days
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        date_str = seven_days_ago.strftime('%Y/%m/%d')
+        return f"after:{date_str}"
 
     def fetch_message_details(self, msg_data, msg_id) -> dict:
         try:
