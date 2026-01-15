@@ -94,7 +94,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         logger.info(f"Gmail query: {query}")
         
         next_page_token = None
-        messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=100)
+        messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
         logger.info(f"Fetched {len(messages)} emails for userId: {tasksPayload.userId}")
         processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
         logger.info(f"Processed {len(processed_messages)} emails for userId: {tasksPayload.userId}")
