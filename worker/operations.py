@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import json
 from dateutil import parser
@@ -26,20 +26,20 @@ class EmailManager:
 
     def build_gmail_query(self, last_synced_at: str = None) -> str:
         """Build Gmail search query based on lastSyncedAt."""
+        
         if last_synced_at:
-            # Convert ISO format to Gmail date format (YYYY/MM/DD)
+            # Convert ISO format to unix timestamp
             try:
-                from datetime import datetime
                 dt = datetime.fromisoformat(last_synced_at.replace('Z', '+00:00'))
-                date_str = dt.strftime('%Y/%m/%d')
-                return f"after:{date_str}"
+                timestamp = int(dt.timestamp())
+                return f"after:{timestamp}"
             except Exception as e:
                 logger.error(f"Error parsing lastSyncedAt: {e}")
     
         # If no lastSyncedAt, use today - 7 days
-        seven_days_ago = datetime.now() - timedelta(days=7)
-        date_str = seven_days_ago.strftime('%Y/%m/%d')
-        return f"after:{date_str}"
+        seven_days_ago = datetime.now() - timedelta(days=1)
+        timestamp = int(seven_days_ago.timestamp())
+        return f"after:{timestamp}"
 
     def fetch_message_details(self, msg_data, msg_id) -> dict:
         try:
@@ -59,9 +59,9 @@ class EmailManager:
                         emailSender = match.group(1).strip()
                         emailId = match.group(2) if match.group(2) else None
 
-                if header.get('name') == 'Date':
-                    date_time = parser.parse(header.get('value', ''))
 
+            internal_date_ms = int(msg_data.get("internalDate"))
+            date_time = datetime.fromtimestamp(internal_date_ms / 1000, tz=timezone.utc)
             mail_data = {
                 'thread_id': msg_data.get('threadId', ''),
                 'id': msg_data.get('id', ''),
@@ -75,6 +75,9 @@ class EmailManager:
             print(f"Error fetching message {msg_id}: {e}")
             return None
 
+    def get_initial_history_id(service):
+        profile = service.users().getProfile(userId="me").execute()
+        return profile["historyId"]
 
     def fetch_emails_messages_list(self, query, next_page_token=None, max_results=1) -> tuple:
         results = self.gmail_service.users().messages().list(
@@ -82,6 +85,7 @@ class EmailManager:
             maxResults=max_results, 
             q=query,
             pageToken=next_page_token,
+            includeSpamTrash=False,
         ).execute()
         messages = results.get('messages', [])
         message_list = []

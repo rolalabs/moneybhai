@@ -92,36 +92,47 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         # Build query based on lastSyncedAt
         query = emailManager.build_gmail_query(last_synced_at)
         logger.info(f"Gmail query: {query}")
-        
+
         next_page_token = None
-        messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
-        logger.info(f"Fetched {len(messages)} emails for userId: {tasksPayload.userId}")
-        processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
-        logger.info(f"Processed {len(processed_messages)} emails for userId: {tasksPayload.userId}")
-        
-        # send emails to mb-backend for inserting into db
-        statusCode: int = emailManager.sync_database(processed_messages)
-        logger.info(f"Database sync status code: {statusCode}")
+        latest_email_time = None
+        while True:
+            # Fetch emails in batches
+            messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
+            logger.info(f"Fetched {len(messages)} emails for userId: {tasksPayload.userId}")
+            processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
+            logger.info(f"Processed {len(processed_messages)} emails for userId: {tasksPayload.userId}")
+            
+            # send emails to mb-backend for inserting into db
+            statusCode: int = emailManager.sync_database(processed_messages)
+            logger.info(f"Database sync status code: {statusCode}")
 
-        # Process LLM through Gemini and update the database
-        aiManager: AIManager = AIManager(email=tasksPayload.email, user_id=tasksPayload.userId)
-        transactions_list: list[dict] = aiManager.process_emails(processed_messages)
+            # Process LLM through Gemini and update the database
+            aiManager: AIManager = AIManager(email=tasksPayload.email, user_id=tasksPayload.userId)
+            transactions_list: list[dict] = aiManager.process_emails(processed_messages)
 
-        # Send processed transactions to mb-backend for inserting into db
-        if transactions_list is None:
-            logger.info("No transactions extracted from emails, skipping database sync")
-            return {"status": "done"}
-        
-        logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
-        status = aiManager.syncDatabase(transactions_list)
-        logger.info(f"AI Manager database sync status: {status}")
+            # Send processed transactions to mb-backend for inserting into db
+            if transactions_list is None:
+                logger.info("No transactions extracted from emails, skipping database sync")
+                return {"status": "done"}
+            
+            logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
+            status = aiManager.syncDatabase(transactions_list)
+            logger.info(f"AI Manager database sync status: {status}")
 
-        # Update lastSyncedAt to the latest email timestamp
-        if processed_messages:
-            latest_email_time = max(msg.date_time for msg in processed_messages if msg.date_time)
-            if latest_email_time:
-                update_last_synced_at(tasksPayload.userId, latest_email_time.isoformat())
-                logger.info(f"Updated lastSyncedAt to {latest_email_time.isoformat()}")
+            # Update lastSyncedAt to the latest email timestamp
+            if processed_messages:
+                if not latest_email_time:
+                    latest_email_time = processed_messages[0].date_time
+                for msg in processed_messages:
+                    if msg.date_time:
+                        latest_email_time = max(msg.date_time, latest_email_time)
+            if not next_page_token:
+                break
+        # while loop ends
+
+        if latest_email_time:
+            update_last_synced_at(tasksPayload.userId, latest_email_time.isoformat())
+            logger.info(f"Updated lastSyncedAt to {latest_email_time.isoformat()}")
 
         return {"status": "done"}
     
