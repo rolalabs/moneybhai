@@ -86,3 +86,66 @@ async def get_daily_expenditure(
             status_code=500,
             content={"message": "Failed to fetch daily expenditure", "error": str(e)}
         )
+
+
+@router.get("/{userId}/average-expenditure")
+async def get_average_expenditure(
+    userId: str,
+    days: int = Query(default=7, ge=1, le=365, description="Number of days for average calculation (1-365)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get average daily expenditure for a user over a specified number of days.
+    
+    Args:
+        userId: User ID
+        days: Number of days to calculate average over (default: 7, max: 365)
+        db: Database session
+    
+    Returns:
+        Average daily expenditure data
+    """
+    try:
+        user = db.query(UsersORM).filter(UsersORM.id == userId).first()
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "User not found"}
+            )
+        
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=days - 1)
+        
+        result = db.query(
+            func.sum(TransactionORM.amount).label('total')
+        ).filter(
+            TransactionORM.userId == userId,
+            TransactionORM.transaction_type == 'debit',
+            func.date(TransactionORM.date_time) >= start_date,
+            func.date(TransactionORM.date_time) <= end_date
+        ).first()
+        
+        total_expenditure = float(result.total) if result.total else 0.0
+        average_expenditure = round(total_expenditure / days, 2)
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "metric": "average_expenditure",
+                "currency": "INR",
+                "range": {
+                    "start": str(start_date),
+                    "end": str(end_date),
+                    "days": days
+                },
+                "total_expenditure": total_expenditure,
+                "average_per_day": average_expenditure
+            }
+        )
+    
+    except Exception as e:
+        logger.exception(f"Error fetching average expenditure for userId {userId}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to fetch average expenditure", "error": str(e)}
+        )
