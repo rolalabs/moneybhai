@@ -37,7 +37,7 @@ class EmailManager:
                 logger.error(f"Error parsing lastSyncedAt: {e}")
     
         # If no lastSyncedAt, use today - 7 days
-        seven_days_ago = datetime.now() - timedelta(days=1)
+        seven_days_ago = datetime.now() - timedelta(days=7)
         timestamp = int(seven_days_ago.timestamp())
         return f"after:{timestamp}"
 
