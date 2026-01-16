@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import re
 import json
-from dateutil import parser
+from email.utils import parseaddr
 import requests
 from sqlalchemy.orm import Session
 from googleapiclient.discovery import Resource
@@ -54,11 +54,10 @@ class EmailManager:
             for header in msg_data.get('payload', {}).get('headers', []):
                 if header.get('name') == 'From':
                     from_header = header.get('value', '')
-                    match = re.match(r'^(.*?)(?:\s*<([^>]+)>)?$', from_header)
-                    if match:
-                        emailSender = match.group(1).strip()
-                        emailId = match.group(2) if match.group(2) else None
+                    emailSender, emailId = parseaddr(from_header)
 
+            if emailId is None or emailId == '':
+                logger.error(f"Email ID not found in 'From' header for message {msg_id}. Skipping.")
 
             internal_date_ms = int(msg_data.get("internalDate"))
             date_time = datetime.fromtimestamp(internal_date_ms / 1000, tz=timezone.utc)
@@ -68,7 +67,7 @@ class EmailManager:
                 'snippet': msg_data.get('snippet', ''),
                 'date_time': date_time,
                 'emailSender': emailSender,
-                'emailId': emailId
+                'emailId': emailId.lower(),
             }
             return mail_data
         except Exception as e:
