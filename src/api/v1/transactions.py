@@ -6,6 +6,7 @@ from fastapi.security import HTTPBasic
 
 from src.core.database import get_db
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
 
 from src.utils.log import setup_logger
 
@@ -26,7 +27,10 @@ async def get_transaction(id: str, db: Session = Depends(get_db)):
 async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPayload, db: Session = Depends(get_db)):
     """Bulk insert transactions into the database."""
     try:
-        txn_orm_list: list[TransactionORM] = []
+        logger.info(f"Processing {len(transactionsPayload.transactions)} transactions for bulk insert")
+        
+        # Create ORM objects for type safety
+        txn_orm_list = []
         failed_count = 0
         for idx, transaction in enumerate(transactionsPayload.transactions):
             try:
@@ -49,21 +53,39 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
                 failed_count += 1
                 logger.warning(f"Failed to process transaction at index {idx}: {e}. Failed transaction ID: {transaction.id}")
         
+        inserted_count = 0
+        skipped_count = 0
+        
         if txn_orm_list:
-            db.bulk_save_objects(txn_orm_list)
+            # Convert ORM objects to dictionaries for bulk insert
+            txn_data = []
+            for orm_obj in txn_orm_list:
+                obj_dict = {}
+                for col in TransactionORM.__table__.columns:
+                    obj_dict[col.name] = getattr(orm_obj, col.name)
+                txn_data.append(obj_dict)
+            
+            # Use PostgreSQL's ON CONFLICT DO NOTHING to skip duplicates
+            stmt = insert(TransactionORM).values(txn_data)
+            stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+            
+            result = db.execute(stmt)
             db.commit()
+            
+            inserted_count = result.rowcount
+            skipped_count = len(txn_orm_list) - inserted_count
         
-        inserted_count = len(txn_orm_list)
-        
-        logger.info(f"Inserted {inserted_count} transactions. Failed: {failed_count}")
+        logger.info(f"Inserted {inserted_count} transactions, skipped {skipped_count} duplicates, failed {failed_count}")
         
         return JSONResponse(
-            status_code=200 if failed_count == 0 else 207,  # 207 = Multi-Status (partial success)
+            status_code=200,
             content={
-                "message": f"Inserted {inserted_count} transactions, {failed_count} failed",
-                "status": "success" if failed_count == 0 else "partial_success",
+                "message": f"Inserted {inserted_count} transactions, skipped {skipped_count} duplicates, {failed_count} failed",
+                "status": "completed",
                 "inserted": inserted_count,
+                "skipped": skipped_count,
                 "failed": failed_count,
+                "total": len(transactionsPayload.transactions)
             }
         )
     except Exception as e:
