@@ -52,6 +52,10 @@ jobs:
           GMAIL_WEB_CLIENT_ID: "${{ secrets.GMAIL_WEB_CLIENT_ID }}"
           GMAIL_WEB_CLIENT_SECRET: "${{ secrets.GMAIL_WEB_CLIENT_SECRET }}"
           MB_BACKEND_API_URL: "${{ vars.MB_BACKEND_API_URL }}"
+          LANGSMITH_TRACING: "true"
+          LANGSMITH_ENDPOINT: "https://api.smith.langchain.com"
+          LANGSMITH_API_KEY: "${{ secrets.LANGSMITH_API_KEY }}"
+          LANGSMITH_PROJECT: "MoneyBhai"
           EOF
 
       - name: Deploy Worker to Cloud Run
