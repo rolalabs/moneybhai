@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     GCP_CREDENTIALS: str = None
     GMAIL_WEB_CLIENT_ID: str = None
     GMAIL_WEB_CLIENT_SECRET: str = None
+    LANGSMITH_TRACING: bool = True
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGSMITH_API_KEY: str
+    LANGSMITH_PROJECT: str = "MoneyBhai"
+
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

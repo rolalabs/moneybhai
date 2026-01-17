@@ -2,8 +2,9 @@ from datetime import datetime, timedelta, timezone
 import re
 import json
 from email.utils import parseaddr
+from langsmith import traceable
 import requests
-from sqlalchemy.orm import Session
+from langsmith.run_helpers import get_current_run_tree
 from googleapiclient.discovery import Resource
 from packages.models import Transaction
 from worker.connectors import ENV_SETTINGS, VERTEXT_CLIENT
@@ -138,7 +139,14 @@ class AIManager:
         self.email = email
         self.user_id = user_id
 
+    @traceable(
+        name="generate_transactions",
+        run_type="llm",
+        metadata={"ls_provider": "Gemini", "ls_model_name": "gemini-2.5-flash"}
+    )
     def generate_transactions_list_from_emails(self, message_to_parse_list: list[str]) -> list:
+
+        run = get_current_run_tree()
         BASE_PROMPT = """You are an expert data extraction assistant specialized in financial transaction alert messages from banks, credit cards, or UPI platforms.
 
         **Your Goal:** Extract the specified data fields from the provided message(s) and return **ONLY** a valid JSON list. Each item in the list must be a JSON object representing one transaction.
@@ -190,7 +198,24 @@ class AIManager:
                     model='gemini-2.5-flash', 
                     contents=final_prompt,
                 )
-                return response.text
+
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
+                    token_usage = {
+                        "input_tokens": response.usage_metadata.prompt_token_count,
+                        "output_tokens": response.usage_metadata.candidates_token_count,
+                        "total_tokens": response.usage_metadata.total_token_count,
+                        "input_token_details": {
+                            "cache_read": response.usage_metadata.cached_content_token_count,
+                        },
+                    }
+                    run.set(usage_metadata=token_usage)
+                
+                run.metadata["user_id"] = self.user_id
+                run.metadata["email"] = self.email
+                return {
+                    "input_messages": message_to_parse_list,
+                    "raw_model_output": response.text
+                }
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}")
                 if attempt == max_retries - 1:
@@ -227,7 +252,7 @@ class AIManager:
             message_to_parse_list.append(snippet)
             # mark_email_as_gemini_parsed(msg.thread_id)
 
-        model_response = self.generate_transactions_list_from_emails(message_to_parse_list) 
+        model_response = self.generate_transactions_list_from_emails(message_to_parse_list).get("raw_model_output", "")
         transactions_json_list = self.extract_json_from_response(model_response)
 
         if not transactions_json_list:
@@ -278,6 +303,3 @@ class AIManager:
             logger.info("Successfully inserted batch starting at index")
         
         return response.status_code
-
-
-        
