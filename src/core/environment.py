@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     API_TOKEN_GITHUB: str | None = None
     GCP_CREDENTIALS: str | None = None
     DATABASE_URL: str | None = None
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGSMITH_API_KEY: str
+    LANGSMITH_PROJECT: str = "MoneyBhai"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
