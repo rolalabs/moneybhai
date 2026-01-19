@@ -11,6 +11,7 @@ class AccountsORM(DB_BASE):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     userId = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    emailId = Column(String, nullable=False)
     createdAt = Column(DateTime, default=datetime.now, nullable=False)
     gmailRefreshToken = Column(String, nullable=True)
     gmailRefreshTokenCreatedAt = Column(DateTime, nullable=True)
