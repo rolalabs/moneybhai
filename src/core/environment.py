@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
     LANGSMITH_API_KEY: str
     LANGSMITH_PROJECT: str = "MoneyBhai"
+    LANGSMITH_TRACING: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

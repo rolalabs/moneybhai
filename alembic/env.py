@@ -13,6 +13,7 @@ from src.core.database import DB_BASE
 from src.modules.emails.model import EmailMessageORM
 from src.modules.transactions.schema import TransactionORM
 from src.modules.users.schema import UsersORM
+from src.modules.accounts.schema import AccountsORM
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
