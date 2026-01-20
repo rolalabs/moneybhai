@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from fastapi import Depends
+from src.modules.accounts.schema import AccountsORM
+from src.modules.accounts.operations import getAccountById
 from src.modules.users.operations import fetchUserById
 from src.modules.emails.model import EmailBulkInsertPayload, EmailBulkInsertResponse, EmailMessage, EmailMessageORM
 from src.core.database import get_db
@@ -35,40 +37,6 @@ async def root():
     """Root endpoint"""
     return {"message": "MoneyBhai Email Processor API", "status": "running"}
 
-# @router.post("/process-emails")
-# async def fetch_and_process_emails_route(background_tasks: BackgroundTasks):
-#     """Route to fetch and process emails"""
-#     try:
-#         background_tasks.add_task(fetch_and_process_emails)
-#         logger.info("Email fetch and process task started in background")
-#         return JSONResponse(
-#             status_code=200,
-#             content={"message": "Email fetch and process task started successfully", "status": "started"}
-#         )
-#     except Exception as e:
-#         logger.exception(f"Error starting email fetch and process task: {e}")
-#         return JSONResponse(
-#             status_code=500,
-#             content={"message": "Failed to start email fetch and process task", "error": str(e)}
-#         )
-
-# @router.post("/fetch-emails")
-# async def run_email_watcher_route(background_tasks: BackgroundTasks, poll_every_sec: int = 5):
-#     """Route to start the email watcher service"""
-#     try:
-#         background_tasks.add_task(run_email_watcher, poll_every_sec)
-#         logger.info(f"Email watcher started in background with polling interval: {poll_every_sec}s")
-#         return JSONResponse(
-#             status_code=200,
-#             content={"message": "Email watcher started successfully", "status": "started", "poll_interval": poll_every_sec}
-#         )
-#     except Exception as e:
-#         logger.exception(f"Error starting email watcher: {e}")
-#         return JSONResponse(
-#             status_code=500,
-#             content={"message": "Failed to start email watcher", "error": str(e)}
-#         )
-
 
 # add an endpoint that will insert 100 emails at once into the database. the payload will have list of emails
 @router.post("/insert-bulk")
@@ -82,6 +50,14 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
                 status_code=404,
                 content={"message": "User not found"}
             )
+        
+        account: AccountsORM = getAccountById(payload.accountId, db)
+        if not account:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "Account not found"}
+            )
+        
 
         logger.info(f"Inserting {len(payload.emails)} emails into the database for email: {payload.emailId}")
 
@@ -95,7 +71,8 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
                 date_time=email.date_time,
                 emailSender=email.emailSender,
                 emailId=email.emailId,
-                source=email.source,
+                accountId=payload.accountId,
+                source=account.emailId,
                 isTransaction=email.isTransaction,
                 isGeminiParsed=email.isGeminiParsed
             )

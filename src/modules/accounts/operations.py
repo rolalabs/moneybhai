@@ -7,8 +7,12 @@ from src.utils.log import setup_logger
 logger = setup_logger(__name__)
 
 # get accounts by emailId
-def getAccountByEmailId(emailId: str, db: Session):
+def getAccountByEmailId(emailId: str, db: Session) -> AccountsORM | None:
     account = db.query(AccountsORM).filter(AccountsORM.emailId == emailId).first()
+    return account
+
+def getAccountById(accountId: str, db: Session) -> AccountsORM | None:
+    account = db.query(AccountsORM).filter(AccountsORM.id == accountId).first()
     return account
 
 # create account

@@ -18,6 +18,7 @@ class EmailMessage(BaseModel):
 class EmailBulkInsertPayload(BaseModel):
     emails: list[EmailMessage]
     userId: str
+    accountId: str
     emailId: str
 
 class EmailBulkInsertResponse(BaseModel):
@@ -33,6 +34,7 @@ class EmailMessageORM(DB_BASE):
     date_time = Column(DateTime)
     emailSender = Column(String(128))
     emailId = Column(String(128))
+    accountId = Column(String(128))
     source = Column(String(128), default="ss.saswatsahoo@gmail")
     isTransaction = Column(Boolean, default=False)
     isGeminiParsed = Column(Boolean, default=False)
