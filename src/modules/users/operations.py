@@ -58,7 +58,7 @@ def verifyGmailToken(token: str) -> dict:
 
 
 def generateGmailAccessUrl(accountId: str) -> str:
-    flow = generateOAuthFlow(accountId)
+    flow = generateOAuthFlow()
     auth_url, state = flow.authorization_url(
         access_type="offline",
         prompt="consent",

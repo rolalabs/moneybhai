@@ -79,7 +79,7 @@ async def gmail_auth_callback(state: str, code: str, db: Session = Depends(get_d
     """
     # TODO: state is set as accountId
     accountId = state
-    token = gmailExchangeCodeForToken(accountId, code, db)
+    gmailExchangeCodeForToken(accountId, code, db) 
 
     return {"message": "Gmail OAuth2 callback received", "code": code}
 
