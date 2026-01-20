@@ -22,5 +22,6 @@ class TransactionBulkInsertPayload(BaseModel):
 
 class TaskQueuePayload(BaseModel):
     email: str
+    accountId: str
     userId: str
     token: str
