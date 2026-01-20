@@ -15,6 +15,10 @@ def getAccountById(accountId: str, db: Session) -> AccountsORM | None:
     account = db.query(AccountsORM).filter(AccountsORM.id == accountId).first()
     return account
 
+def getAccountsByUserId(userId: str, db: Session) -> list[AccountsORM]:
+    accounts = db.query(AccountsORM).filter(AccountsORM.userId == userId).all()
+    return accounts
+
 # create account
 def createAccount(email: str, id: str, db: Session):
 

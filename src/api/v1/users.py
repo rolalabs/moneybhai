@@ -1,11 +1,11 @@
 from fastapi.responses import JSONResponse
-from src.modules.accounts.operations import createAccount, getAccountByEmailId, setSyncLock, releaseSyncLock
+from src.modules.accounts.operations import createAccount, getAccountByEmailId, getAccountsByUserId, setSyncLock, releaseSyncLock
 from src.modules.accounts.schema import AccountsORM
 from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
 from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse, UserUpdatePayload
 from src.modules.users.schema import UsersORM
-from src.modules.users.operations import createUser, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl, updateUserById
+from src.modules.users.operations import createUser, fetchUserById, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl, updateUserById
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
@@ -20,6 +20,23 @@ router = APIRouter()
 security = HTTPBasic()
 
 logger = setup_logger(__name__)
+
+@router.get("/{user_id}/accounts")
+async def get_user_accounts(user_id: str, db: Session = Depends(get_db)):
+    """Get all accounts for a specific user."""
+    user = fetchUserById(user_id, db)
+    if not user:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "User not found"}
+        )
+    accounts = getAccountsByUserId(user_id, db)
+    if not accounts:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "No accounts found for this user"}
+        )
+    return {"accounts": accounts}
 
 @router.post("/auth")
 async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = Depends(get_db)):
