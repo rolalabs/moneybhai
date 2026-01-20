@@ -1,4 +1,5 @@
 from fastapi.responses import JSONResponse
+from modules.users.operations import generateGmailAccessUrl
 from src.modules.accounts.models import AccountUpdatePayload
 from src.modules.accounts.operations import releaseSyncLock, updateAccountById
 from src.modules.accounts.schema import AccountsORM
@@ -73,3 +74,18 @@ async def unlock_sync_route(id: str, db: Session = Depends(get_db)):
             status_code=500,
             content={"message": "Failed to release sync lock", "error": str(e)}
         )
+
+@router.get("/{id}/gmail-access-url", response_model=dict)
+async def get_refresh_token_route(id: str, db: Session = Depends(get_db)):
+    """Get the Gmail refresh token for the account."""
+    account = db.query(AccountsORM).filter(AccountsORM.id == id).first()
+    if not account:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "Account not found"}
+        )
+    gmail_access_url = generateGmailAccessUrl(str(account.id))
+
+    return {
+        "gmailAccessUrl": gmail_access_url
+    }

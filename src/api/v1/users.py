@@ -59,10 +59,8 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
     if not account:
         account: AccountsORM = createAccount(user.email, str(user.id), db)
     
-    gmail_access_url = generateGmailAccessUrl(str(account.id))
 
     return {
-        "gmailAccessUrl": gmail_access_url,
         "user": {
             "email": userDetails.email,
             "name": userDetails.name,
