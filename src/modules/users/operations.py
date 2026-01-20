@@ -3,6 +3,7 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from sqlalchemy.orm import Session
+from src.modules.accounts.operations import updateAccountById
 from packages.enums import GMAIL_SCOPES
 from src.modules.users.schema import UsersORM
 from src.core.environment import ENV_SETTINGS
@@ -81,17 +82,17 @@ def verifyGmailToken(token: str) -> dict:
         raise
 
 
-def generateGmailAccessUrl(userId: str) -> str:
-    flow = generateOAuthFlow(userId)
+def generateGmailAccessUrl(accountId: str) -> str:
+    flow = generateOAuthFlow(accountId)
     auth_url, state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
         include_granted_scopes="false",
-        state=userId,
+        state=accountId,
     )
     return auth_url
 
-def generateOAuthFlow(userId: str) -> Flow:
+def generateOAuthFlow() -> Flow:
 
     flow = Flow.from_client_config(
         {
@@ -108,9 +109,9 @@ def generateOAuthFlow(userId: str) -> Flow:
     flow.redirect_uri = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/auth/callback"
     return flow
 
-def gmailExchangeCodeForToken(userId: str, code: str, db: Session) -> dict:
+def gmailExchangeCodeForToken(accountId: str, code: str, db: Session) -> dict:
 
-    flow = generateOAuthFlow(userId)
+    flow = generateOAuthFlow()
     try:
         flow.fetch_token(code=code)
         credentials = flow.credentials
@@ -120,7 +121,7 @@ def gmailExchangeCodeForToken(userId: str, code: str, db: Session) -> dict:
             "gmailRefreshToken": credentials.refresh_token,
             "gmailRefreshTokenCreatedAt": datetime.now()
         }
-        updatedUser = updateUserById(userId, updatePayload, db)
+        udpatedAccount = updateAccountById(accountId, updatePayload, db)
         return {
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,

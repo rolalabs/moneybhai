@@ -1,0 +1,40 @@
+from datetime import datetime, timezone
+from src.modules.accounts.schema import AccountsORM
+from sqlalchemy.orm import Session
+
+from src.utils.log import setup_logger
+
+logger = setup_logger(__name__)
+
+# get accounts by emailId
+def getAccountByEmailId(emailId: str, db: Session):
+    account = db.query(AccountsORM).filter(AccountsORM.emailId == emailId).first()
+    return account
+
+# create account
+def createAccount(email: str, id: str, db: Session):
+
+    newAccount: AccountsORM = AccountsORM(
+        emailId=email,
+        userId=id,
+        createdAt=datetime.now(timezone.utc),
+        isSyncing=False,
+        lastSyncedAt=None
+    )
+    db.add(newAccount)
+    db.commit()
+    db.refresh(newAccount)
+    return newAccount
+
+
+def updateAccountById(accountId: str, update_data: dict, db: Session):
+    account = db.query(AccountsORM).filter(AccountsORM.id == accountId).first()
+    if not account:
+        logger.error(f"Account with ID {accountId} not found for update.")
+        return None
+    for key, value in update_data.items():
+        setattr(account, key, value)
+    db.commit()
+    db.refresh(account)
+    logger.info(f"Updated account with ID {accountId}.")
+    return account

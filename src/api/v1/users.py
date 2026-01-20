@@ -1,4 +1,7 @@
+from datetime import datetime, timezone
 from fastapi.responses import JSONResponse
+from src.modules.accounts.operations import createAccount, getAccountByEmailId
+from src.modules.accounts.schema import AccountsORM
 from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
 from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse, UserUpdatePayload
@@ -35,7 +38,12 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
         # create user
         user = createUser(email=userDetails.email, name=userDetails.name, db=db)
     
-    gmail_access_url = generateGmailAccessUrl(str(user.id))
+    # fetch from accounts table
+    account: AccountsORM = getAccountByEmailId(emailId=userDetails.email, db=db)
+    if not account:
+        account: AccountsORM = createAccount(user.email, str(user.id), db)
+    
+    gmail_access_url = generateGmailAccessUrl(str(account.id))
 
     return {
         "gmailAccessUrl": gmail_access_url,
@@ -44,7 +52,7 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
             "name": userDetails.name,
             "picture": userDetails.picture,
             "id": str(user.id),
-            "gmailRefreshToken": user.gmailRefreshToken
+            "gmailRefreshToken": account.gmailRefreshToken
         }
     }
 
@@ -53,9 +61,9 @@ async def gmail_auth_callback(state: str, code: str, db: Session = Depends(get_d
     """
     Handle Gmail OAuth2 callback
     """
-    # TODO: state is set as userId
-    userId = state
-    token = gmailExchangeCodeForToken(userId, code, db)
+    # TODO: state is set as accountId
+    accountId = state
+    token = gmailExchangeCodeForToken(accountId, code, db)
 
     return {"message": "Gmail OAuth2 callback received", "code": code}
 
@@ -114,6 +122,12 @@ async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
                 status_code=404,
                 content={"message": "User not found"}
             )
+        account = getAccountByEmailId(user.email, db)
+        if not account or not account.gmailRefreshToken:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Gmail not connected for this user"}
+            )
         
         if not setSyncLock(id, db):
             return JSONResponse(
@@ -124,7 +138,7 @@ async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
         payload: TaskQueuePayload = TaskQueuePayload(
             email=user.email,
             userId=str(id),
-            token=user.gmailRefreshToken
+            token=account.gmailRefreshToken
         )
 
         enqueue_worker_task(payload.model_dump())
