@@ -1,5 +1,5 @@
 from fastapi.responses import JSONResponse
-from modules.users.operations import generateGmailAccessUrl
+from src.modules.users.operations import generateGmailAccessUrl
 from src.modules.accounts.models import AccountUpdatePayload
 from src.modules.accounts.operations import releaseSyncLock, updateAccountById
 from src.modules.accounts.schema import AccountsORM
