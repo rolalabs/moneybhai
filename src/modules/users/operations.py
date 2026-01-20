@@ -35,31 +35,6 @@ def updateUserById(userId: str, update_data: dict, db: Session):
     logger.info(f"Updated user with ID {userId}.")
     return user
 
-def setSyncLock(userId: str, db: Session) -> bool:
-    """Set sync lock for user. Returns True if lock was set, False if already syncing."""
-    user = db.query(UsersORM).filter(UsersORM.id == userId).first()
-    if not user:
-        logger.error(f"User with ID {userId} not found.")
-        return False
-    if user.isSyncing:
-        logger.info(f"User {userId} is already syncing.")
-        return False
-    user.isSyncing = True
-    db.commit()
-    logger.info(f"Sync lock set for user {userId}.")
-    return True
-
-def releaseSyncLock(userId: str, db: Session) -> bool:
-    """Release sync lock for user. Returns True if lock was released."""
-    user = db.query(UsersORM).filter(UsersORM.id == userId).first()
-    if not user:
-        logger.error(f"User with ID {userId} not found.")
-        return False
-    user.isSyncing = False
-    db.commit()
-    logger.info(f"Sync lock released for user {userId}.")
-    return True
-
 def createUser(email: str, name: str, db: Session):
     new_user = UsersORM(email=email, name=name)
     db.add(new_user)

@@ -23,8 +23,6 @@ class UserAuthPayload(BaseModel):
 
 class UserUpdatePayload(BaseModel):
     name: Optional[str] = None
-    lastSyncedAt: Optional[datetime] = None
-    isSyncing: Optional[bool] = None
 
 class GmailAuthVerificationResponse(BaseModel):
     email: str
