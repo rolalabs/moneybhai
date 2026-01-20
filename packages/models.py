@@ -17,6 +17,7 @@ class Transaction(BaseModel):
 class TransactionBulkInsertPayload(BaseModel):
     transactions: list[Transaction]
     userId: str
+    accountId: str
     emailId: str
 
 

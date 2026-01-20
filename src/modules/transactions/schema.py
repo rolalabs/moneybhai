@@ -19,3 +19,4 @@ class TransactionORM(DB_BASE):
     emailId = Column(String(128))
     reference_number = Column(String(128))
     userId = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    accountId = Column(UUID(as_uuid=True), ForeignKey('accounts.id'), nullable=False)
