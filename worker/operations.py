@@ -20,10 +20,11 @@ class EmailManager:
     2. Process emails through llm
     3. Store processed emails in the database
     '''
-    def __init__(self, gmail_service: Resource, email: str, user_id: str):
+    def __init__(self, gmail_service: Resource, email: str, userId: str, accountId: str):
         self.gmail_service: Resource = gmail_service
         self.email = email
-        self.user_id = user_id
+        self.userId = userId
+        self.accountId = accountId
 
     def build_gmail_query(self, last_synced_at: str = None) -> str:
         """Build Gmail search query based on lastSyncedAt."""
@@ -118,8 +119,9 @@ class EmailManager:
             headers={'Content-Type': 'application/json'},
             json={
                 'emails': formatted_email_list,
-                'userId': self.user_id,
+                'userId': self.userId,
                 'emailId': self.email,
+                'accountId': self.accountId,
             }
         )
         if response.status_code != 200:
@@ -135,9 +137,10 @@ class AIManager:
     This class is supposed to do the following actions:
     1. Process emails through llm
     '''
-    def __init__(self, email: str, user_id: str):
+    def __init__(self, email: str, userId: str, accountId: str):
         self.email = email
-        self.user_id = user_id
+        self.userId = userId
+        self.accountId = accountId
 
     @traceable(
         name="generate_transactions",
@@ -210,8 +213,9 @@ class AIManager:
                     }
                     run.set(usage_metadata=token_usage)
                 
-                run.metadata["user_id"] = self.user_id
+                run.metadata["user_id"] = self.userId
                 run.metadata["email"] = self.email
+                run.metadata["account_id"] = self.accountId
                 return {
                     "input_messages": message_to_parse_list,
                     "raw_model_output": response.text
@@ -293,8 +297,9 @@ class AIManager:
             headers={'Content-Type': 'application/json'},
             json={
                 'transactions': transactions_list,
-                'userId': self.user_id,
+                'userId': self.userId,
                 'emailId': self.email,
+                'accountId': self.accountId,
             }
         )
         if response.status_code != 200:

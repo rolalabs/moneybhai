@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-def release_sync_lock(user_id: str) -> None:
+def release_sync_lock(account_id: str) -> None:
     """Release sync lock for a user after task completion or error."""
     try:
-        unlock_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}/unlock"
+        unlock_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/accounts/{account_id}/unlock"
         unlock_response = requests.post(unlock_url)
-        logger.info(f"Sync lock released for user {user_id}, status: {unlock_response.status_code}")
+        logger.info(f"Sync lock released for user with {account_id}, status: {unlock_response.status_code}")
     except Exception as unlock_error:
-        logger.error(f"Failed to release sync lock for user {user_id}: {unlock_error}")
+        logger.error(f"Failed to release sync lock for user with {account_id}: {unlock_error}")
 
 def fetch_user_details(user_id: str) -> dict:
     """Fetch user details from backend API."""
@@ -40,18 +40,31 @@ def fetch_user_details(user_id: str) -> dict:
         logger.error(f"Error fetching user details for user {user_id}: {e}")
         return None
 
-def update_last_synced_at(user_id: str, last_synced_at: str) -> None:
-    """Update lastSyncedAt for a user."""
+def fetch_account_details(account_id: str) -> dict:
+    """Fetch account details from backend API."""
     try:
-        update_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}"
+        account_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/accounts/{account_id}"
+        response = requests.get(account_url)
+        if response.status_code == 200:
+            return response.json()
+        logger.error(f"Failed to fetch account details, status: {response.status_code}")
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching account details for account {account_id}: {e}")
+        return None
+    
+def update_last_synced_at(accountId: str, last_synced_at: str) -> None:
+    """Update lastSyncedAt for a account."""
+    try:
+        update_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/accounts/{accountId}"
         response = requests.put(
             update_url,
             headers={'Content-Type': 'application/json'},
             json={'lastSyncedAt': last_synced_at}
         )
-        logger.info(f"Updated lastSyncedAt for user {user_id}, status: {response.status_code}")
+        logger.info(f"Updated lastSyncedAt for account {accountId}, status: {response.status_code}")
     except Exception as e:
-        logger.error(f"Failed to update lastSyncedAt for user {user_id}: {e}")
+        logger.error(f"Failed to update lastSyncedAt for account {accountId}: {e}")
 
 @app.post("/tasks/process")
 async def processTask(request: Request, db: Session = Depends(get_db)):
@@ -64,30 +77,35 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
     6. store results in db
     7. return status    
     '''
-    user_id = None
+    accountId = None
     try:
         logger.info("Received task processing request")
         payload = await request.body()
         payload = base64.b64decode(payload).decode("utf-8")
         payload = json.loads(payload)  # Parse the JSON string to dictionary
         logger.info(f"Received task payload: {payload}")
-        user_id = payload.get("userId")
+        accountId = payload.get("accountId")
 
         tasksPayload: TaskQueuePayload = TaskQueuePayload(**payload)  # Validate payload structure
 
         # Fetch user details to get lastSyncedAt
-        user_details = fetch_user_details(tasksPayload.userId)
-        if not user_details:
-            raise Exception("Failed to fetch user details")
+        accountDetails = fetch_account_details(tasksPayload.accountId)
+        if not accountDetails:
+            raise Exception("Failed to fetch account details")
         
-        last_synced_at = user_details.get('lastSyncedAt')
-        logger.info(f"User lastSyncedAt: {last_synced_at}")
+        last_synced_at = accountDetails.get('lastSyncedAt')
+        logger.info(f"Account lastSyncedAt: {last_synced_at}")
 
         # Authenticate Gmail
         gmailService = authenticateGmail(tasksPayload.token)
 
         # Fetch emails and process it
-        emailManager = EmailManager(gmailService, tasksPayload.email, tasksPayload.userId)
+        emailManager = EmailManager(
+            gmail_service=gmailService,
+            email=tasksPayload.email,
+            userId=accountDetails.get('userId'),
+            accountId=tasksPayload.accountId,
+        )
 
         # Build query based on lastSyncedAt
         query = emailManager.build_gmail_query(last_synced_at)
@@ -97,10 +115,10 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         latest_email_time = None
         while True:
             # Fetch emails in batches
-            messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
-            logger.info(f"Fetched {len(messages)} emails for userId: {tasksPayload.userId}")
+            messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=1)
+            logger.info(f"Fetched {len(messages)} emails for accountId: {tasksPayload.accountId}")
             processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
-            logger.info(f"Processed {len(processed_messages)} emails for userId: {tasksPayload.userId}")
+            logger.info(f"Processed {len(processed_messages)} emails for accountId: {tasksPayload.accountId}")
             
             # send emails to mb-backend for inserting into db
             statusCode: int = emailManager.sync_database(processed_messages)
@@ -131,7 +149,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         # while loop ends
 
         if latest_email_time:
-            update_last_synced_at(tasksPayload.userId, latest_email_time.isoformat())
+            update_last_synced_at(tasksPayload.accountId, latest_email_time.isoformat())
             logger.info(f"Updated lastSyncedAt to {latest_email_time.isoformat()}")
 
         return {"status": "done"}
@@ -146,8 +164,31 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         # TODO: figure out way to unlock user if user id is not present
-        if user_id:
-            release_sync_lock(user_id)
+        if accountId:
+            release_sync_lock(account_id=accountId)
+
+@app.post("/tasks/orders")
+async def processOrders(request: Request):
+    '''
+    This API will be used to figure out the orders placed by user from different platforms
+    It will take input of the gmail messages and provide item name, quantity and price
+    We'll store this data in the database
+    And run one more logic to correlate the data with transactions done by user
+    '''
+    try:
+        logger.info("Received order processing request")
+        payload = await request.body()
+        payload = base64.b64decode(payload).decode("utf-8")
+        payload = json.loads(payload)
+        logger.info(f"Received order payload: {payload}")
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.exception(e)
+        logger.error(f"Invalid JSON or base64 payload: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid payload format")
+    except Exception as e:
+        logger.exception(e)
+        logger.error(f"Error processing orders job: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 # Add health check api
 @app.get("/health")
