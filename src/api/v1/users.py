@@ -5,7 +5,7 @@ from src.modules.transactions.schema import TransactionORM
 from packages.models import TaskQueuePayload
 from src.modules.users.models import UserAuthPayload, GmailAuthVerificationResponse, UserUpdatePayload
 from src.modules.users.schema import UsersORM
-from src.modules.users.operations import createUser, fetchUserById, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, generateGmailAccessUrl, updateUserById
+from src.modules.users.operations import createUser, fetchUserById, gmailExchangeCodeForToken, verifyGmailToken, fetchUserByEmail, updateUserById
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPBasic
@@ -38,8 +38,29 @@ async def get_user_accounts(user_id: str, db: Session = Depends(get_db)):
         )
     return {"accounts": accounts}
 
+@router.post("/{id}/link-gmail", response_model=dict)
+async def link_gmail_with_user(id: str, payload: UserAuthPayload, db: Session = Depends(get_db)):
+    """Generate Gmail OAuth2 link URL for the user's account."""
+    user = fetchUserById(id, db)
+    if not user:
+        return {"error": "User not found"}
+    
+    verificationResponse = verifyGmailToken(payload.token)
+    accountDetails = GmailAuthVerificationResponse(**verificationResponse)
+
+    # fetch from accounts table
+    account: AccountsORM = getAccountByEmailId(emailId=accountDetails.email, db=db)
+    if not account:
+        account: AccountsORM = createAccount(accountDetails.email, str(user.id), db)
+    
+    # return success response
+    return {
+        "message": "Gmail linked successfully",
+        "accountId": str(account.id)
+    }
+
 @router.post("/auth")
-async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = Depends(get_db)):
+async def verify_token_and_get_access(payload: UserAuthPayload, db: Session = Depends(get_db)):
     """
     1. Verify Auth Token
     2. Check if user exists or not
@@ -54,21 +75,13 @@ async def verify_token_and_get_access(payload: UserAuthPayload ,db: Session = De
         # create user
         user = createUser(email=userDetails.email, name=userDetails.name, db=db)
     
-    # fetch from accounts table
-    account: AccountsORM = getAccountByEmailId(emailId=userDetails.email, db=db)
-    if not account:
-        account: AccountsORM = createAccount(user.email, str(user.id), db)
-    
-
     return {
-        "user": {
-            "email": userDetails.email,
-            "name": userDetails.name,
-            "picture": userDetails.picture,
-            "id": str(user.id),
-            "gmailRefreshToken": account.gmailRefreshToken
-        }
+        "email": userDetails.email,
+        "name": userDetails.name,
+        "picture": userDetails.picture,
+        "id": str(user.id),
     }
+
 
 @router.get("/auth/callback")
 async def gmail_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
