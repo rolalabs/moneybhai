@@ -21,6 +21,33 @@ security = HTTPBasic()
 
 logger = setup_logger(__name__)
 
+# create an endpoint to create account for a user by taking UserAuthPayload
+@router.post("/{user_id}/accounts", response_model=dict)
+async def create_account_for_user(user_id: str, payload: UserAuthPayload, db: Session = Depends(get_db)):
+    """Create an account for a user using the provided email from the auth payload."""
+    user = fetchUserById(user_id, db)
+    if not user:
+        return JSONResponse(
+            status_code=404,
+            content={"message": "User not found"}
+        )
+    verificationResponse = verifyGmailToken(payload.token)
+    accountDetails = GmailAuthVerificationResponse(**verificationResponse)
+
+    # check if account already exists
+    existing_account: AccountsORM = getAccountByEmailId(emailId=accountDetails.email, db=db)
+    if existing_account:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Account with this email already exists"}
+        )
+    # create account
+    new_account: AccountsORM = createAccount(accountDetails.email, str(user.id), db)
+    return {
+        "message": "Account created successfully",
+        "accountId": str(new_account.id)
+    }
+
 @router.get("/{user_id}/accounts")
 async def get_user_accounts(user_id: str, db: Session = Depends(get_db)):
     """Get all accounts for a specific user."""
