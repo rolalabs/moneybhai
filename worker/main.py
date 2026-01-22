@@ -125,7 +125,11 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
             logger.info(f"Database sync status code: {statusCode}")
 
             # Process LLM through Gemini and update the database
-            aiManager: AIManager = AIManager(email=tasksPayload.email, user_id=tasksPayload.userId)
+            aiManager: AIManager = AIManager(
+                email=tasksPayload.email, 
+                user_id=tasksPayload.userId, 
+                accountId=tasksPayload.accountId,
+            )
             transactions_list: list[dict] = aiManager.process_emails(processed_messages)
 
             # Send processed transactions to mb-backend for inserting into db
