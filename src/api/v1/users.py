@@ -192,6 +192,7 @@ async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
         payload: TaskQueuePayload = TaskQueuePayload(
             email=user.email,
             userId=str(id),
+            accountId=str(account.id),
             token=account.gmailRefreshToken
         )
 
