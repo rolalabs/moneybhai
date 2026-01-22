@@ -115,7 +115,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         latest_email_time = None
         while True:
             # Fetch emails in batches
-            messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=1)
+            messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
             logger.info(f"Fetched {len(messages)} emails for accountId: {tasksPayload.accountId}")
             processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
             logger.info(f"Processed {len(processed_messages)} emails for accountId: {tasksPayload.accountId}")
