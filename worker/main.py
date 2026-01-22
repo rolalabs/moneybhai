@@ -127,7 +127,7 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
             # Process LLM through Gemini and update the database
             aiManager: AIManager = AIManager(
                 email=tasksPayload.email, 
-                user_id=tasksPayload.userId, 
+                userId=tasksPayload.userId, 
                 accountId=tasksPayload.accountId,
             )
             transactions_list: list[dict] = aiManager.process_emails(processed_messages)
