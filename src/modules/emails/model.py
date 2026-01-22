@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Text, DateTime, Boolean
+from sqlalchemy import UUID, Column, ForeignKey, String, Text, DateTime, Boolean
 from pydantic import BaseModel
 from typing import Optional
 from src.core.database import DB_BASE
@@ -34,7 +34,7 @@ class EmailMessageORM(DB_BASE):
     date_time = Column(DateTime)
     emailSender = Column(String(128))
     emailId = Column(String(128))
-    accountId = Column(String(128))
+    accountId = Column(UUID(as_uuid=True), ForeignKey('accounts.id'), nullable=False)
     source = Column(String(128), default="ss.saswatsahoo@gmail")
     isTransaction = Column(Boolean, default=False)
     isGeminiParsed = Column(Boolean, default=False)
