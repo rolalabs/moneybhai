@@ -13,3 +13,4 @@ class UsersORM(DB_BASE):
     email = Column(String, unique=True, nullable=False, index=True)
     name = Column(String, nullable=False)
     createdAt = Column(DateTime, default=datetime.now, nullable=False)
+    has_allowed_analytics = Column(Boolean, default=False, nullable=False)
