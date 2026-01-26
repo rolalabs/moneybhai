@@ -19,30 +19,50 @@ async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db
     inserted_count = 0
     skipped_count = 0
     failed_count = 0
+    updated_count = 0
     
     for idx, order in enumerate(orderPayloadList.orders):
         try:
-            # Create ORM object
-            ord = OrdersORM(
-                order_id=order.orderId, 
-                vendor=order.vendor,
-                order_date=convert_iso_to_datetime(order.orderDate),
-                currency=order.currency,
-                sub_total=order.subTotal,
-                total=order.total,
-                account_id=orderPayloadList.accountId,
-                message_id=order.messageId
-            )
+            # Check if order already exists
+            existing_order = db.query(OrdersORM).filter(OrdersORM.order_id == order.orderId).first()
             
-            # Try to insert the order
-            db.add(ord)
-            db.commit()
-            inserted_count += 1
+            if existing_order:
+                # Update existing order with any new non-None values
+                if order.vendor is not None:
+                    existing_order.vendor = order.vendor
+                if order.orderDate is not None:
+                    existing_order.order_date = convert_iso_to_datetime(order.orderDate)
+                if order.currency is not None:
+                    existing_order.currency = order.currency
+                if order.subTotal is not None:
+                    existing_order.sub_total = order.subTotal
+                if order.total is not None:
+                    existing_order.total = order.total
+                if order.messageId is not None:
+                    existing_order.message_id = order.messageId
+                
+                db.commit()
+                updated_count += 1
+                logger.debug(f"Updated existing order at index {idx}: {order.orderId}")
+                ord = existing_order
+            else:
+                # Create new order
+                ord = OrdersORM(
+                    order_id=order.orderId, 
+                    vendor=order.vendor,
+                    order_date=convert_iso_to_datetime(order.orderDate),
+                    currency=order.currency,
+                    sub_total=order.subTotal,
+                    total=order.total,
+                    account_id=orderPayloadList.accountId,
+                    message_id=order.messageId
+                )
+                db.add(ord)
+                db.commit()
+                db.refresh(ord)
+                inserted_count += 1
 
-            # check if order is inserted successfully
-            db.refresh(ord)
-
-            # go through items and insert those as well
+            # Insert order items (append new items)
             for item in order.items:
                 order_item = OrderItemsORM(
                     order_id=ord.id,
@@ -59,18 +79,14 @@ async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db
                 
         except Exception as e:
             db.rollback()
-            # Check if it's a duplicate key error
-            if "unique constraint" in str(e).lower() or "duplicate" in str(e).lower():
-                skipped_count += 1
-                logger.debug(f"Skipped duplicate order at index {idx}: {order.orderId}")
-            else:
-                failed_count += 1
-                logger.warning(f"Failed to insert order at index {idx}: {e}. Order ID: {order.orderId}")
+            failed_count += 1
+            logger.warning(f"Failed to process order at index {idx}: {e}. Order ID: {order.orderId}")
             continue
     
     logger.info(f"Insert completed: {inserted_count} inserted, {skipped_count} skipped, {failed_count} failed")
     return {
         "inserted": inserted_count,
         "skipped": skipped_count,
+        "updated": updated_count,
         "failed": failed_count
     }
