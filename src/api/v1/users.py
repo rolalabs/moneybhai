@@ -176,34 +176,42 @@ async def scrapeEmailsRoute(id: str, db: Session = Depends(get_db)):
                 status_code=404,
                 content={"message": "User not found"}
             )
-        account = getAccountByEmailId(user.email, db)
-        if not account or not account.gmailRefreshToken:
+        
+        accounts = getAccountsByUserId(str(id), db)
+        if not accounts:
             return JSONResponse(
                 status_code=400,
-                content={"message": "Gmail not connected for this user"}
+                content={"message": "No accounts found for this user"}
             )
         
-        if not setSyncLock(str(account.id), db):
-            return JSONResponse(
-                status_code=204,
-                content={"message": "Already syncing"}
-            )
+        for account in accounts:
+            if not account.gmailRefreshToken:
+                logger.warning(f"Account {account.id} does not have Gmail connected")
+                continue
+            
+            if not setSyncLock(str(account.id), db):
+                logger.info(f"Account {account.id} is already syncing")
+                continue
+            
+            try:
+                payload: TaskQueuePayload = TaskQueuePayload(
+                    email=account.emailId,
+                    userId=str(id),
+                    accountId=str(account.id),
+                    token=account.gmailRefreshToken
+                )
+                enqueue_worker_task(payload.model_dump())
+                logger.info(f"Sync triggered for account {account.id}")
+            except Exception as e:
+                logger.exception(f"Error enqueuing sync for account {account.id}: {e}")
+                releaseSyncLock(str(account.id), db)
         
-        payload: TaskQueuePayload = TaskQueuePayload(
-            email=user.email,
-            userId=str(id),
-            accountId=str(account.id),
-            token=account.gmailRefreshToken
-        )
-
-        enqueue_worker_task(payload.model_dump())
         return JSONResponse(
             status_code=200,
-            content={"message": "Email scraping completed successfully", "status": "completed"}
+            content={"message": "Sync triggered for all eligible accounts"}
         )
     except Exception as e:
         logger.exception(f"Error during email scraping: {e}")
-        releaseSyncLock(str(account.id), db)
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to scrape emails", "error": str(e)}
