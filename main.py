@@ -57,7 +57,7 @@ async def log_requests_responses(request: Request, call_next):
         except Exception as e:
             extra_fields["body_error"] = str(e)
     
-    logger.info("Incoming request", extra=extra_fields)
+    logger.info(f"Incoming request - {request.method} {request.url.path}", extra=extra_fields)
     
     # Process request and get response
     response = await call_next(request)
@@ -74,7 +74,7 @@ async def log_requests_responses(request: Request, call_next):
         "headers": dict(response.headers),
     }
     
-    logger.info("Request completed", extra=extra_fields)
+    logger.info(f"Request completed - {request.method} {request.url.path}", extra=extra_fields)
     
     return response
 
