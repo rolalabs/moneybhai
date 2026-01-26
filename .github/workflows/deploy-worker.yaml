@@ -45,7 +45,6 @@ jobs:
       - name: Create env file
         run: |
           cat <<EOF > env.yaml
-          DATABASE_URL: "${{ secrets.DATABASE_URL }}"
           GCP_CREDENTIALS: '${{ secrets.GCP_CREDENTIALS }}'
           WORKER_CLOUD_RUN_URL: "${{ vars.WORKER_CLOUD_RUN_URL }}"
           API_TOKEN_GITHUB: "${{ secrets.API_TOKEN_GITHUB }}"
