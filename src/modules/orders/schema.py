@@ -9,7 +9,7 @@ class OrdersORM(DB_BASE):
     __tablename__ = "orders"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    order_id = Column(String, nullable=False)
+    order_id = Column(String, nullable=False, unique=True)
     message_id = Column(String, nullable=True)
     vendor = Column(String, nullable=True)
     order_date = Column(DateTime, nullable=True)
