@@ -1,7 +1,5 @@
 from datetime import datetime
-from typing import Optional
 from pydantic import BaseModel
-from worker.connectors import DB_BASE
 
 # class EmailMessage(BaseModel):
 #     thread_id: Optional[str] = None
