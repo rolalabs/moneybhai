@@ -6,7 +6,7 @@ import base64
 import requests
 
 from sqlalchemy.orm import Session
-from packages.models import TaskQueuePayload
+from packages.models import EmailSanitized, TaskQueuePayload
 from worker.connectors import get_db, ENV_SETTINGS
 from worker.operations import AIManager, EmailManager
 from worker.gmailAuth import authenticateGmail
@@ -88,10 +88,15 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
 
         tasksPayload: TaskQueuePayload = TaskQueuePayload(**payload)  # Validate payload structure
 
-        # Fetch user details to get lastSyncedAt
+        # Fetch account details to get lastSyncedAt
         accountDetails = fetch_account_details(tasksPayload.accountId)
         if not accountDetails:
             raise Exception("Failed to fetch account details")
+        
+        # Fetch user details to get lastSyncedAt
+        userDetails = fetch_user_details(tasksPayload.userId)
+        if not userDetails:
+            raise Exception("Failed to fetch user details")
         
         last_synced_at = accountDetails.get('lastSyncedAt')
         logger.info(f"Account lastSyncedAt: {last_synced_at}")
@@ -117,10 +122,11 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
             # Fetch emails in batches
             messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
             logger.info(f"Fetched {len(messages)} emails for accountId: {tasksPayload.accountId}")
-            processed_messages: list[EmailMessage] = emailManager.fetch_messages_details_list(messages)
+            processed_messages: list[EmailSanitized] = emailManager.fetch_messages_details_list(messages)
             logger.info(f"Processed {len(processed_messages)} emails for accountId: {tasksPayload.accountId}")
             
             # send emails to mb-backend for inserting into db
+            # TODO: if userDetails.get("has_allowed_analytics", False) is True:
             statusCode: int = emailManager.sync_database(processed_messages)
             logger.info(f"Database sync status code: {statusCode}")
 
@@ -130,24 +136,32 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
                 userId=tasksPayload.userId, 
                 accountId=tasksPayload.accountId,
             )
-            transactions_list: list[dict] = aiManager.process_emails(processed_messages)
+            transactions_list: list[dict] = aiManager.extract_transactions_from_emails(processed_messages)
 
             # Send processed transactions to mb-backend for inserting into db
-            if transactions_list is None:
+            if transactions_list:            
+                logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
+                status = aiManager.saveTransactions(transactions_list)
+                logger.info(f"AI Manager database sync status: {status}")
+            else:
                 logger.info("No transactions extracted from emails, skipping database sync")
-                return {"status": "done"}
-            
-            logger.info(f"Processed and extracted {len(transactions_list)} transactions from emails for email: {tasksPayload.email}")
-            status = aiManager.syncDatabase(transactions_list)
-            logger.info(f"AI Manager database sync status: {status}")
+
+
+            # Process Orders from emails
+            llm_orders_response = aiManager.extract_order_from_emails(processed_messages)
+            orders_list = aiManager.extract_json_from_response(llm_orders_response.get("raw_model_output"))
+            if orders_list:
+                logger.info(f"Processed and extracted {len(orders_list)} orders from emails for email: {tasksPayload.email}")
+                status = aiManager.saveOrders(orders_list)
+                logger.info(f"AI Manager orders database sync status: {status}")
 
             # Update lastSyncedAt to the latest email timestamp
             if processed_messages:
                 if not latest_email_time:
-                    latest_email_time = processed_messages[0].date_time
+                    latest_email_time = processed_messages[0].receivedAt
                 for msg in processed_messages:
-                    if msg.date_time:
-                        latest_email_time = max(msg.date_time, latest_email_time)
+                    if msg.receivedAt:
+                        latest_email_time = max(msg.receivedAt, latest_email_time)
             if not next_page_token:
                 break
         # while loop ends
