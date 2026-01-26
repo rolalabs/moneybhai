@@ -5,10 +5,9 @@ import logging
 import base64
 import requests
 
-from sqlalchemy.orm import Session
 from packages.models import EmailSanitized, TaskQueuePayload
-from worker.connectors import get_db, ENV_SETTINGS
-from worker.operations import AIManager, EmailManager
+from worker.connectors import ENV_SETTINGS
+from worker.operations import AIManager, CoRelationManager, EmailManager
 from worker.gmailAuth import authenticateGmail
 from worker.models import EmailMessage, TaskModel
 
@@ -65,9 +64,35 @@ def update_last_synced_at(accountId: str, last_synced_at: str) -> None:
         logger.info(f"Updated lastSyncedAt for account {accountId}, status: {response.status_code}")
     except Exception as e:
         logger.error(f"Failed to update lastSyncedAt for account {accountId}: {e}")
+    
+def fetch_transactions(user_id: str) -> list:
+    """Fetch transactions for a user from backend API."""
+    try:
+        transactions_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}/transactions"
+        response = requests.get(transactions_url)
+        if response.status_code == 200:
+            return response.json().get("transactions", [])
+        logger.error(f"Failed to fetch transactions, status: {response.status_code}")
+        return []
+    except Exception as e:
+        logger.error(f"Error fetching transactions for user {user_id}: {e}")
+        return []
+
+def fetch_orders(user_id: str) -> list:
+    """Fetch orders for a user from backend API."""
+    try:
+        orders_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/users/{user_id}/orders"
+        response = requests.get(orders_url)
+        if response.status_code == 200:
+            return response.json().get("orders", [])
+        logger.error(f"Failed to fetch orders, status: {response.status_code}")
+        return []
+    except Exception as e:
+        logger.error(f"Error fetching orders for user {user_id}: {e}")
+        return []
 
 @app.post("/tasks/process")
-async def processTask(request: Request, db: Session = Depends(get_db)):
+async def processTask(request: Request):
     '''
     1. take the user id given in input
     2. fetch the user details via user id
@@ -185,13 +210,19 @@ async def processTask(request: Request, db: Session = Depends(get_db)):
         if accountId:
             release_sync_lock(account_id=accountId)
 
-@app.post("/tasks/orders")
+@app.post("/tasks/co-relate-orders")
 async def processOrders(request: Request):
     '''
     This API will be used to figure out the orders placed by user from different platforms
-    It will take input of the gmail messages and provide item name, quantity and price
-    We'll store this data in the database
-    And run one more logic to correlate the data with transactions done by user
+    It will take input of the orders and transactions already stored in the db
+    And then it will try to figure out a co-relation between them. The respective orders and transactions
+    will be updated with the co-relation info.
+    1. take the user id given in input
+    2. fetch the orders and transactions from the db via api calls
+    3. use co-relation logic to find matches
+    4. update the orders and transactions in the db via api calls
+    5. return status
+
     '''
     try:
         logger.info("Received order processing request")
@@ -199,6 +230,22 @@ async def processOrders(request: Request):
         payload = base64.b64decode(payload).decode("utf-8")
         payload = json.loads(payload)
         logger.info(f"Received order payload: {payload}")
+
+        # Fetch orders from backend API
+        orders_list = fetch_orders(payload.get("userId"))
+        logger.info(f"Fetched {len(orders_list)} orders for userId: {payload.get('userId')}")
+        # Fetch transactions from backend API
+        transactions_list = fetch_transactions(payload.get("userId"))
+        logger.info(f"Fetched {len(transactions_list)} transactions for userId: {payload.get('userId')}")
+
+        if not orders_list or not transactions_list:
+            logger.info("No orders or transactions found, skipping co-relation")
+            return {"status": "no data to process"}
+        
+        # Implement co-relation logic
+
+
+
     except (json.JSONDecodeError, ValueError) as e:
         logger.exception(e)
         logger.error(f"Invalid JSON or base64 payload: {str(e)}")
