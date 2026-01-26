@@ -254,12 +254,16 @@ class EmailManager:
         receivedAt = self.parse_received_at(msg)
 
         body = self.extract_email_body(msg)
+        sender_email = header_data.get("sender_email")
+        sender_name = header_data.get("sender_name", sender_email)
+        if not sender_name:
+            sender_name = sender_email
 
         return EmailSanitized(
             id=msg.get("id"),
             threadId=msg.get("threadId"),
-            emailSender=header_data.get("sender_name"),
-            emailId=header_data.get("sender_email"),
+            emailSender=sender_name,
+            emailId=sender_email,
             subject=header_data.get("subject"),
             snippet=msg.get("snippet"),
             body=body,
@@ -553,3 +557,21 @@ class AIManager:
             logger.info("Successfully inserted orders batch starting at index")
         
         return response.status_code
+
+# class CoRelationManager:
+#     '''
+#     This class is supposed to do the following actions:
+#     The logic to co-relate will be as follows, 
+#     1. For each order, find transactions whose amount matches the order total (with a tolerance of +/- 2%)
+#     2. For each order, find transaction which is closest in time to the order date/time (within a window of 7 days)
+#     3. For each order, check the vendor name against transaction description for a match (case insensitive substring match)
+#     4. Assign a confidence score based on amount match, time proximity, and vendor name for each transaction candidate
+#     5. Select the transaction with the highest confidence score above a certain threshold (e.g. 90%) as the match for the order
+#     6. Weightage of each factor can be adjusted to improve accuracy based on observed data
+#     '''
+#     def __init__(self, email: str, userId: str, accountId: str, orders_list: list[dict], transactions_list: list[dict]):
+#         self.email = email
+#         self.userId = userId
+#         self.accountId = accountId
+#         self.orders_list = orders_list
+#         self.transactions_list = transactions_list
