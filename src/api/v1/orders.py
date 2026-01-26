@@ -38,6 +38,24 @@ async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db
             db.add(ord)
             db.commit()
             inserted_count += 1
+
+            # check if order is inserted successfully
+            db.refresh(ord)
+
+            # go through items and insert those as well
+            for item in order.items:
+                order_item = OrderItemsORM(
+                    order_id=ord.id,
+                    account_id=orderPayloadList.accountId,
+                    name=item.name,
+                    item_type=item.itemType,
+                    quantity=item.quantity,
+                    unit_price=item.unitPrice,
+                    unit_type=item.unitType,
+                    total=item.total,
+                )
+                db.add(order_item)
+            db.commit()
                 
         except Exception as e:
             db.rollback()
