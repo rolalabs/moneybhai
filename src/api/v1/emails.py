@@ -1,36 +1,17 @@
 from fastapi import APIRouter
-import time
-from datetime import datetime
-from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.postgresql import insert
 from fastapi import Depends
 from src.modules.accounts.schema import AccountsORM
 from src.modules.accounts.operations import getAccountById
 from src.modules.users.operations import fetchUserById
-from src.modules.emails.model import EmailBulkInsertPayload, EmailBulkInsertResponse, EmailMessage, EmailMessageORM
+from src.modules.emails.model import EmailBulkInsertPayload, EmailMessageORM
 from src.core.database import get_db
 from src.utils.log import setup_logger
-from src.utils.common import enqueue_worker_task
 
 router = APIRouter()
 logger = setup_logger(__name__)
-
-# def fetch_and_process_emails():
-#     while True:
-#         start_time = time.time()
-#         logger.info("Fetching and processing emails...")
-
-#         emails_list: list[EmailMessage] = fetch_emails_from_database()
-
-#         if not emails_list:
-#             logger.info("No new emails found.")
-#             break
-#         process_emails(emails_list)
-
-#         logger.info(f"Processed {len(emails_list)} emails in {time.time() - start_time:.2f} seconds.")
 
 @router.get("/")
 async def root():
@@ -65,16 +46,13 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
         email_orm_list = []
         for email in payload.emails:
             email_orm = EmailMessageORM(
-                thread_id=email.thread_id,
+                thread_id=email.threadId,
                 id=email.id,
                 snippet=email.snippet,
-                date_time=email.date_time,
+                date_time=email.receivedAt,
                 emailSender=email.emailSender,
                 emailId=email.emailId,
                 accountId=payload.accountId,
-                source=account.emailId,
-                isTransaction=email.isTransaction,
-                isGeminiParsed=email.isGeminiParsed
             )
             email_orm_list.append(email_orm)
         

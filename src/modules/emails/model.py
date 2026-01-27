@@ -1,22 +1,10 @@
-from datetime import datetime
-from sqlalchemy import UUID, Column, ForeignKey, String, Text, DateTime, Boolean
+from sqlalchemy import UUID, Column, ForeignKey, String, Text, DateTime
 from pydantic import BaseModel
-from typing import Optional
+from packages.models import EmailSanitized
 from src.core.database import DB_BASE
 
-class EmailMessage(BaseModel):
-    thread_id: str
-    id: str
-    snippet: str
-    date_time: datetime
-    emailSender: str
-    emailId: str
-    source: Optional[str] = "ss.saswatsahoo@gmail"
-    isTransaction: Optional[bool] = False
-    isGeminiParsed: Optional[bool] = False  
-
 class EmailBulkInsertPayload(BaseModel):
-    emails: list[EmailMessage]
+    emails: list[EmailSanitized]
     userId: str
     accountId: str
     emailId: str
@@ -35,6 +23,3 @@ class EmailMessageORM(DB_BASE):
     emailSender = Column(String(128))
     emailId = Column(String(128))
     accountId = Column(UUID(as_uuid=True), ForeignKey('accounts.id'), nullable=False)
-    source = Column(String(128), default="ss.saswatsahoo@gmail")
-    isTransaction = Column(Boolean, default=False)
-    isGeminiParsed = Column(Boolean, default=False)
