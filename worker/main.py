@@ -7,9 +7,8 @@ import requests
 
 from packages.models import EmailSanitized, TaskQueuePayload
 from worker.connectors import ENV_SETTINGS
-from worker.operations import AIManager, CoRelationManager, EmailManager
+from worker.operations import AIManager, EmailManager
 from worker.gmailAuth import authenticateGmail
-from worker.models import EmailMessage, TaskModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

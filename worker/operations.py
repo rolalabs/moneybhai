@@ -11,7 +11,6 @@ from googleapiclient.discovery import Resource
 from packages.models import EmailSanitized, OrdersListIntentModel, Transaction
 from worker.connectors import ENV_SETTINGS, VERTEXT_CLIENT
 from worker.log import setup_logger
-from worker.models import EmailMessage
 
 logger = setup_logger(__name__)
 
@@ -45,39 +44,6 @@ class EmailManager:
         timestamp = int(seven_days_ago.timestamp())
         return f"after:{timestamp}"
 
-    def fetch_message_details(self, msg_data, msg_id) -> dict:
-        try:
-            # msg_data = service.users().messages().get(userId='me', id=msg_id, format='full').execute()
-            # if not msg_data:
-            #     log.error(f"Message with ID {msg_id} not found.")
-            #     return None
-            emailSender: str = ''
-            emailId: str = ''
-            date_time: datetime = None
-
-            for header in msg_data.get('payload', {}).get('headers', []):
-                if header.get('name') == 'From':
-                    from_header = header.get('value', '')
-                    emailSender, emailId = parseaddr(from_header)
-
-            if emailId is None or emailId == '':
-                logger.error(f"Email ID not found in 'From' header for message {msg_id}. Skipping.")
-
-            internal_date_ms = int(msg_data.get("internalDate"))
-            date_time = datetime.fromtimestamp(internal_date_ms / 1000, tz=timezone.utc)
-            mail_data = {
-                'thread_id': msg_data.get('threadId', ''),
-                'id': msg_data.get('id', ''),
-                'snippet': msg_data.get('snippet', ''),
-                'date_time': date_time,
-                'emailSender': emailSender,
-                'emailId': emailId.lower(),
-            }
-            return mail_data
-        except Exception as e:
-            print(f"Error fetching message {msg_id}: {e}")
-            return None
-
     def get_initial_history_id(service):
         profile = service.users().getProfile(userId="me").execute()
         return profile["historyId"]
@@ -97,7 +63,7 @@ class EmailManager:
             message_list.append(msg_data)
         return message_list, results.get('nextPageToken')
 
-    def sync_database(self, processed_messages: list[EmailMessage]):
+    def sync_database(self, processed_messages: list[EmailSanitized]):
         '''
         Send the list of emails to mb-backend api to insert into db
         Send in batch of 50
@@ -467,7 +433,7 @@ class AIManager:
     def mark_email_as_gemini_parsed(self, email_id: str):
         pass
 
-    def extract_transactions_from_emails(self, emails_list: list[EmailMessage]) -> list[dict]:
+    def extract_transactions_from_emails(self, emails_list: list[EmailSanitized]) -> list[dict]:
 
         message_dict_list = {msg.id: msg for msg in emails_list}
         message_to_parse_list = []
@@ -497,14 +463,14 @@ class AIManager:
         for transaction in transactions_json_list:
             try:
                 txn: Transaction = Transaction(**transaction)
-                email_details: EmailMessage = message_dict_list.get(txn.id, None)
+                email_details: EmailSanitized = message_dict_list.get(txn.id, None)
 
                 if email_details is None:
                     raise Exception(f"Email details not found for transaction ID: {txn.id}")
 
                 txn.emailId = email_details.emailId if email_details else None
                 txn.emailSender = email_details.emailSender if email_details else None
-                txn.date_time = email_details.date_time.isoformat() if email_details else None
+                txn.date_time = email_details.receivedAt.isoformat() if email_details else None
 
                 transactions_list.append(json.loads(txn.model_dump_json(exclude_none=True)))
             except Exception as e:
