@@ -11,7 +11,7 @@ class TransactionORM(DB_BASE):
     amount = Column(Float)
     transaction_type = Column(String(128))
     source_identifier = Column(String(128))
-    source_type = Column(String(128))
+    is_include_analytics = Column(sqlalchemy.Boolean, default=True)
     destination = Column(String(128))
     mode = Column(String(128))
     date_time = Column(DateTime)
