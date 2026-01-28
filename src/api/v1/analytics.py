@@ -2,7 +2,7 @@ from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from src.core.database import get_db
 from src.modules.transactions.schema import TransactionORM
@@ -38,22 +38,23 @@ async def get_daily_expenditure(
                 content={"message": "User not found"}
             )
         
-        end_date = datetime.now().date()
+        ist_offset = timedelta(hours=5, minutes=30)
+        end_date = (datetime.now(timezone.utc) + ist_offset).date()
         start_date = end_date - timedelta(days=days - 1)
         
         results = db.query(
-            func.date(TransactionORM.date_time).label('date'),
+            func.date(TransactionORM.date_time + ist_offset).label('date'),
             func.sum(TransactionORM.amount).label('total')
         ).filter(
             TransactionORM.userId == userId,
             TransactionORM.is_include_analytics == True,
             TransactionORM.transaction_type == 'debit',
-            func.date(TransactionORM.date_time) >= start_date,
-            func.date(TransactionORM.date_time) <= end_date
+            func.date(TransactionORM.date_time + ist_offset) >= start_date,
+            func.date(TransactionORM.date_time + ist_offset) <= end_date
         ).group_by(
-            func.date(TransactionORM.date_time)
+            func.date(TransactionORM.date_time + ist_offset)
         ).order_by(
-            func.date(TransactionORM.date_time)
+            func.date(TransactionORM.date_time + ist_offset)
         ).all()
         
         expenditure_map = {str(row.date): float(row.total) for row in results}
@@ -114,7 +115,8 @@ async def get_average_expenditure(
                 content={"message": "User not found"}
             )
         
-        end_date = datetime.now().date()
+        ist_offset = timedelta(hours=5, minutes=30)
+        end_date = (datetime.now(timezone.utc) + ist_offset).date()
         start_date = end_date - timedelta(days=days - 1)
         
         result = db.query(
@@ -123,8 +125,8 @@ async def get_average_expenditure(
             TransactionORM.userId == userId,
             TransactionORM.is_include_analytics == True,
             TransactionORM.transaction_type == 'debit',
-            func.date(TransactionORM.date_time) >= start_date,
-            func.date(TransactionORM.date_time) <= end_date
+            func.date(TransactionORM.date_time + ist_offset) >= start_date,
+            func.date(TransactionORM.date_time + ist_offset) <= end_date
         ).first()
         
         total_expenditure = float(result.total) if result.total else 0.0
