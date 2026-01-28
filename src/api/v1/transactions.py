@@ -47,6 +47,7 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
                     date_time=transaction.date_time,
                     userId=transactionsPayload.userId,
                     accountId=transactionsPayload.accountId,
+                    is_include_analytics=True
                 )
                 txn_orm_list.append(txn)
             except Exception as e:
