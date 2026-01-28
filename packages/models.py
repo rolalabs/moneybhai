@@ -7,7 +7,6 @@ class Transaction(BaseModel):
     amount: Optional[float] = None
     transaction_type: Optional[str] = None
     source_identifier: Optional[str] = None
-    source_type: str | None = None
     destination: Optional[str] = None
     mode: Optional[str] = None
     reference_number: Optional[str] = None

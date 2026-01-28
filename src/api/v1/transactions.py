@@ -39,7 +39,6 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
                     amount=transaction.amount,
                     transaction_type=transaction.transaction_type,
                     source_identifier=transaction.source_identifier,
-                    source_type=transaction.source_type,
                     destination=transaction.destination,
                     mode=transaction.mode,
                     reference_number=transaction.reference_number,

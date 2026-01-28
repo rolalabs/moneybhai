@@ -146,6 +146,8 @@ async def processTask(request: Request):
             # Fetch emails in batches
             messages, next_page_token = emailManager.fetch_emails_messages_list(query, next_page_token, max_results=10)
             logger.info(f"Fetched {len(messages)} emails for accountId: {tasksPayload.accountId}")
+            if len(messages) == 0:
+                break
             processed_messages: list[EmailSanitized] = emailManager.fetch_messages_details_list(messages)
             logger.info(f"Processed {len(processed_messages)} emails for accountId: {tasksPayload.accountId}")
             
