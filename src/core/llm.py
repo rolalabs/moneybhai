@@ -92,85 +92,96 @@ class LLMService:
         """Build prompt for SQL generation"""
         
         schema_info = """
-Database Schema:
+        Database Schema:
 
-Table: transactions
-- id (String, PK)
-- amount (Float) - transaction amount
-- transaction_type (String) - type of transaction
-- source_identifier (String) - source of transaction
-- destination (String) - destination of transaction
-- mode (String) - payment mode (UPI, Card, etc)
-- date_time (DateTime) - UTC timestamp
-- email_sender (String) - email sender
-- email_id (String) - email ID
-- reference_number (String) - transaction reference
-- user_id (UUID, FK) - user ID
-- account_id (UUID, FK) - account ID
-- is_include_analytics (Boolean) - include in analytics
+        Table: transactions
+        - id (String, PK)
+        - amount (Float) - transaction amount
+        - transaction_type (String) - type of transaction (Enum: 'debit', 'credit')
+        - 'debit' = money spent / outgoing
+        - 'credit' = money received / incoming
+        - source_identifier (String) - source of transaction
+        - destination (String) - destination of transaction
+        - mode (String) - payment mode (UPI, Card, etc)
+        - date_time (DateTime) - UTC timestamp
+        - email_sender (String) - email sender
+        - email_id (String) - email ID
+        - reference_number (String) - transaction reference
+        - user_id (UUID, FK) - user ID
+        - account_id (UUID, FK) - account ID
+        - is_include_analytics (Boolean) - include in analytics
 
-Table: orders
-- id (UUID, PK)
-- order_id (String, unique) - vendor order ID
-- message_id (String) - email message ID
-- vendor (String) - vendor name (Amazon, Flipkart, etc)
-- order_date (DateTime) - UTC timestamp
-- currency (String) - currency code
-- sub_total (Float) - subtotal amount
-- total (Float) - total amount including discounts
-- account_id (UUID, FK) - account ID
-- created_at (DateTime) - record creation time
+        Table: orders
+        - id (UUID, PK)
+        - order_id (String, unique) - vendor order ID
+        - message_id (String) - email message ID
+        - vendor (String) - vendor name (Amazon, Flipkart, etc)
+        - order_date (DateTime) - UTC timestamp
+        - currency (String) - currency code
+        - sub_total (Float) - subtotal amount
+        - total (Float) - total amount including discounts
+        - account_id (UUID, FK) - account ID
+        - created_at (DateTime) - record creation time
 
-Table: order_items
-- id (UUID, PK)
-- order_id (UUID, FK) - references orders.id
-- account_id (UUID, FK) - account ID
-- name (String) - item name
-- item_type (String) - type of item
-- quantity (Float) - quantity ordered
-- unit_type (String) - unit measurement
-- unit_price (Float) - price per unit
-- total (Float) - total price for item
-"""
-        
+        Table: order_items
+        - id (UUID, PK)
+        - order_id (UUID, FK) - references orders.id
+        - account_id (UUID, FK) - account ID
+        - name (String) - item name
+        - item_type (String) - type of item
+        - quantity (Float) - quantity ordered
+        - unit_type (String) - unit measurement
+        - unit_price (Float) - price per unit
+        - total (Float) - total price for item
+        """
+
         prompt = f"""You are a SQL query generator for a financial transaction database.
 
-{schema_info}
+        {schema_info}
 
-Context:
-- User ID: {system_context['userId']}
-- Timezone: {system_context['timezone']}
-- Today's Date: {system_context['today']}
+        Context:
+        - User ID: {system_context['userId']}
+        - Timezone: {system_context['timezone']}
+        - Today's Date: {system_context['today']}
 
-STRICT RULES:
-1. Generate SELECT queries ONLY
-2. Use only the tables and columns defined above
-3. Always filter by userId = '{system_context['userId']}' in transactions table
-4. Always filter by account_id in orders/order_items (accounts belong to user)
-5. For date filters, use DATE() function or date_time/order_date columns
-6. Add LIMIT 20 for list queries (non-aggregate)
-7. Use proper SQL syntax for PostgreSQL
-8. If time period is mentioned (last month, this year), calculate dates
-9. Total amounts in orders.total already include discounts
-10. All dates are stored in UTC
+        BUSINESS DEFINITIONS:
+        - "spend", "spending", "expense", "spent", "paid" → transaction_type = 'debit'
+        - "income", "earned", "received", "credited" → transaction_type = 'credit'
+        - If user asks for "total spendings" or "how much did I spend", always filter transaction_type = 'debit'
+        - If user asks for "transactions" without qualifiers, include both debit and credit
 
-User Question: {user_question}
+        STRICT RULES:
+        1. Generate SELECT queries ONLY
+        2. Use only the tables and columns defined above
+        3. Always filter by userId = '{system_context['userId']}' in transactions table
+        4. Always filter by account_id in orders/order_items (accounts belong to user)
+        5. For date filters, use DATE() function or date_time/order_date columns
+        6. Add LIMIT 20 for list queries (non-aggregate)
+        7. Use proper SQL syntax for PostgreSQL
+        8. If time period is mentioned (last month, this year), calculate dates
+        9. Total amounts in orders.total already include discounts
+        10. All dates are stored in UTC
+        11. For spending/expenditure queries, ALWAYS filter by transaction_type = 'debit'
+        12. For income/credit queries, filter by transaction_type = 'credit'
+        13. transaction_type can ONLY be 'debit' or 'credit'. Never invent other values.
 
-Generate a SQL query and assign confidence:
-- 0.9-1.0: Clear, unambiguous question
-- 0.7-0.8: Minor ambiguity but answerable
-- 0.5-0.6: Significant ambiguity or missing info
-- < 0.5: Cannot generate reliable query
+        User Question: {user_question}
 
-Respond ONLY with valid JSON:
-{{
-  "sql": "SELECT ... FROM ... WHERE ...",
-  "confidence": 0.85,
-  "reasoning": "Brief explanation of query logic"
-}}
+        Generate a SQL query and assign confidence:
+        - 0.9-1.0: Clear, unambiguous question
+        - 0.7-0.8: Minor ambiguity but answerable
+        - 0.5-0.6: Significant ambiguity or missing info
+        - < 0.5: Cannot generate reliable query
 
-If confidence < 0.6, set sql to null and explain what information is needed.
-"""
+        Respond ONLY with valid JSON:
+        {{
+        "sql": "SELECT ... FROM ... WHERE ...",
+        "confidence": 0.85,
+        "reasoning": "Brief explanation of query logic"
+        }}
+
+        If confidence < 0.6, set sql to null and explain what information is needed.
+        """
         
         return prompt
     
