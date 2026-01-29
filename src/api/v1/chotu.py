@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
-from src.api.v1.schemas.chotu_schemas import QueryRequest, QueryResponse, ErrorResponse
+from src.modules.chotu.models import QueryRequest, QueryResponse, ErrorResponse
 from src.core.llm import llm_service
 from src.utils.query_executor import QueryExecutor
 from src.utils.log import setup_logger
