@@ -4,6 +4,8 @@
 - DO NOT refactor unrelated code
 - DO NOT config values
 - DO NOT add inline loops or conditionals. Always use full statements.
+- Always use IST timezone for date/time. If needed, convert using offset +5:30.
+- Any UTC timestamps must be converted to IST before use.
 
 ## Coding rules
 - Prefer existing patterns in the codebase
