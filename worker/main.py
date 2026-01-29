@@ -8,7 +8,7 @@ import requests
 from packages.models import EmailSanitized, TaskQueuePayload
 from worker.connectors import ENV_SETTINGS
 from worker.operations import AIManager, EmailManager
-from worker.gmailAuth import authenticateGmail
+from worker.gmailAuth import authenticateGmail, TokenExpiredError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -63,6 +63,19 @@ def update_last_synced_at(accountId: str, last_synced_at: str) -> None:
         logger.info(f"Updated lastSyncedAt for account {accountId}, status: {response.status_code}")
     except Exception as e:
         logger.error(f"Failed to update lastSyncedAt for account {accountId}: {e}")
+
+def invalidate_account_token(account_id: str) -> None:
+    """Clear refresh token for an account when it's expired or revoked."""
+    try:
+        update_url = f"{ENV_SETTINGS.MB_BACKEND_API_URL}api/v1/accounts/{account_id}"
+        response = requests.put(
+            update_url,
+            headers={'Content-Type': 'application/json'},
+            json={'gmailRefreshToken': None, 'gmailRefreshTokenCreatedAt': None}
+        )
+        logger.info(f"Invalidated refresh token for account {account_id}, status: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Failed to invalidate token for account {account_id}: {e}")
     
 def fetch_transactions(user_id: str) -> list:
     """Fetch transactions for a user from backend API."""
@@ -126,7 +139,15 @@ async def processTask(request: Request):
         logger.info(f"Account lastSyncedAt: {last_synced_at}")
 
         # Authenticate Gmail
-        gmailService = authenticateGmail(tasksPayload.token)
+        try:
+            gmailService = authenticateGmail(tasksPayload.token)
+        except TokenExpiredError as e:
+            logger.error(f"Token expired for account {tasksPayload.accountId}: {str(e)}")
+            invalidate_account_token(tasksPayload.accountId)
+            raise HTTPException(
+                status_code=401, 
+                detail="Gmail refresh token has expired or been revoked. Please re-authenticate your Gmail account."
+            )
 
         # Fetch emails and process it
         emailManager = EmailManager(

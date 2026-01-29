@@ -1,9 +1,15 @@
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from worker.connectors import ENV_SETTINGS
 
 from packages.enums import GMAIL_SCOPES
+
+
+class TokenExpiredError(Exception):
+    """Raised when OAuth refresh token has expired or been revoked."""
+    pass
 
 def authenticateGmail(refresh_token: str):
     """
@@ -29,6 +35,14 @@ def authenticateGmail(refresh_token: str):
         scopes=GMAIL_SCOPES
     )
 
-    creds.refresh(Request())
+    try:
+        creds.refresh(Request())
+    except RefreshError as e:
+        error_msg = str(e)
+        if 'invalid_grant' in error_msg or 'expired' in error_msg.lower() or 'revoked' in error_msg.lower():
+            raise TokenExpiredError(
+                "Gmail refresh token has expired or been revoked. User needs to re-authenticate."
+            ) from e
+        raise
 
     return build('gmail', 'v1', credentials=creds)
