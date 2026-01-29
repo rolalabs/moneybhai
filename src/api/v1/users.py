@@ -228,7 +228,7 @@ async def get_transactions_by_userId(userId: str, db: Session = Depends(get_db))
                 status_code=404,
                 content={"message": "User not found"}
             )
-        transactions = db.query(TransactionORM).filter(TransactionORM.userId == userId).order_by(TransactionORM.date_time.desc()).all()
+        transactions = db.query(TransactionORM).filter(TransactionORM.user_id == userId).order_by(TransactionORM.date_time.desc()).all()
         return transactions
     except Exception as e:
         logger.exception(f"Error fetching transactions for userId {userId}: {e}")

@@ -18,5 +18,5 @@ class TransactionORM(DB_BASE):
     email_sender = Column(String(128))
     email_id = Column(String(128))
     reference_number = Column(String(128))
-    userId = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
-    accountId = Column(UUID(as_uuid=True), ForeignKey('accounts.id'), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    account_id = Column(UUID(as_uuid=True), ForeignKey('accounts.id'), nullable=False)

@@ -46,7 +46,7 @@ async def get_daily_expenditure(
             func.date(TransactionORM.date_time + ist_offset).label('date'),
             func.sum(TransactionORM.amount).label('total')
         ).filter(
-            TransactionORM.userId == userId,
+            TransactionORM.user_id == userId,
             TransactionORM.is_include_analytics == True,
             TransactionORM.transaction_type == 'debit',
             func.date(TransactionORM.date_time + ist_offset) >= start_date,
@@ -122,7 +122,7 @@ async def get_average_expenditure(
         result = db.query(
             func.sum(TransactionORM.amount).label('total')
         ).filter(
-            TransactionORM.userId == userId,
+            TransactionORM.user_id == userId,
             TransactionORM.is_include_analytics == True,
             TransactionORM.transaction_type == 'debit',
             func.date(TransactionORM.date_time + ist_offset) >= start_date,
