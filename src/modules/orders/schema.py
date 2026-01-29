@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
+from packages.enums import TransactionCategory
 from src.core.database import DB_BASE
 
 
@@ -27,6 +28,7 @@ class OrderItemsORM(DB_BASE):
     order_id = Column(UUID(as_uuid=True), ForeignKey('orders.id'), nullable=False)
     account_id = Column(UUID(as_uuid=True), ForeignKey('accounts.id'), nullable=False)
     name = Column(String, nullable=True)
+    category = Column(String, nullable=False, default=TransactionCategory.OTHER.value, server_default=TransactionCategory.OTHER.value)
     item_type = Column(String, nullable=True)
     quantity = Column(Float, nullable=True)
     unit_type = Column(String, nullable=True)
