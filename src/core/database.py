@@ -1,5 +1,5 @@
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
 
@@ -25,3 +25,12 @@ def get_db() -> Generator[Session, None, None]:
         yield db  # provides the session to route
     finally:
         db.close()  # ensures session is closed after request
+
+def get_read_only_db() -> Generator[Session, None, None]:
+    """Provides a read-only database session"""
+    db = SessionLocal()
+    try:
+        db.execute(text("SET TRANSACTION READ ONLY;"))
+        yield db
+    finally:
+        db.close()

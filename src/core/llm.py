@@ -1,90 +1,224 @@
-# from datetime import datetime
-# from transformers import pipeline
-# import torch
+import json
+from typing import Dict, Any
+from langsmith import traceable
+from src.core.connectors import VERTEXT_CLIENT
+from src.core.environment import ENV_SETTINGS
 
-# # Determine the best device for macOS
-# if torch.backends.mps.is_available():
-#     device = "mps"  # Apple Silicon GPU acceleration
-# elif torch.cuda.is_available():
-#     device = "cuda"  # NVIDIA GPU (not available on macOS)
-# else:
-#     device = "cpu"  # CPU fallback
 
-# pipe = pipeline(
-#     "text-generation",
-#     model="google/gemma-3-1b-it",
-#     device=device,
-#     torch_dtype=torch.bfloat16,
-# )
-# def extract_transaction_details(email_message_list: list[str]) -> str:
-
-#     final_message = "\n\n" + "\n\n".join(email_message_list)
-#     messages = [
-#         {
-#             "role": "system",
-#             "content": [{"type": "text", "text": """You are an expert data extraction assistant specialized in financial transaction alert messages from banks, credit cards, or UPI platforms.
-
-#         **Your Goal:** Extract the specified data fields from the provided message(s) and return **ONLY** a valid JSON list. Each item in the list must be a JSON object representing one transaction.
-
-#         **Strict Output Requirements:**
-#         * **Absolutely no conversational text, explanations, or markdown formatting (e.g., ```json) outside the JSON list itself.**
-#         * The response must begin with `[` and end with `]`.
-
-#         **Extracted Fields and Constraints:**
-#         * `id` (string): Unique identifier for the message. This maps to the "ID" in the message.
-#         * `amount` (number): Numeric value of the transaction. Do not include currency symbols.
-#         * `transaction_type` (string): **Strictly** one of: "debit" or "credit".
-#         * `source_identifier` (string): Account number, card number, or UPI ID from which money was deducted or into which money was received.
-#         * `destination` (string): Name, UPI ID, merchant, or platform that is the recipient or sender.
-#         * `reference_number` (string): UPI or bank transaction reference number. Can be an empty string if not found.
-#         * `mode` (string): **Strictly** one of: "UPI", "Credit Card", "Bank Transfer", "ATM", "POS", or "Unknown".
-#         * `reason` (string): Description or reason for the transaction. Can be an empty string if not found.
-#         * `date` (string): The transaction date in 'YYYY-MM-DD' format. If the year is not explicitly mentioned, assume the current year (2025). If the date is not found, return `null`.
-
-#         Rules:
-#         1. Exclude any emails that is for OTPs, promotional offers, or non-transactional alerts.
-#         2. Return an empty JSON list `[]` if no valid transactions are found.
-#         3. A transaction must have at least amount, transaction_type, source_identifier, and destination to be considered valid.
-
-#         **Example Message and Expected Output:**
-
-#         Message: "Dear Customer, Rs.65.00 has been debited from account 1531 to VPA Q285361434@ybl MADHU SUDHAN S on 04-07-25. Your UPI transaction reference number is 254342617978. Thread-ID: 1234567890abcdef"
-
-#         Expected Output:
-#         ```json
-#         [
-#             {
-#                 "id": "1234567890abcdef",
-#                 "amount": 65.00,
-#                 "transaction_type": "debit",
-#                 "source_identifier": "1531",
-#                 "destination": "Q285361434@ybl MADHU SUDHAN S",
-#                 "reference_number": "254342617978",
-#                 "mode": "UPI",
-#                 "reason": "Payment to VPA Q285361434@ybl MADHU SUDHAN S",
-#                 "date": "2025-07-04"
-#             }
-#         ]
+class LLMService:
+    """Service for interacting with LLM with LangSmith tracing"""
+    
+    def __init__(self):
+        self.client = VERTEXT_CLIENT
+        self.model_name = "gemini-2.5-flash"
+    
+    @traceable(
+        name="llm_generate_sql",
+        tags=["step:sql_generation", "chotu"],
+        project_name=ENV_SETTINGS.LANGSMITH_PROJECT
+    )
+    def generate_sql_from_question(
+        self,
+        user_question: str,
+        system_context: Dict[str, Any],
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        Convert user question to SQL query
+        Returns: {"sql": "SELECT ...", "confidence": 0.0-1.0}
+        """
         
-#         Example 2:
-#         Message: "Freshworks Lead Software Engineer - Backend: Organizations everywhere struggle under the weight of their data. They need a solution that can help them manage and analyze their data effectively."
+        prompt = self._build_sql_generation_prompt(user_question, system_context)
+        
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config={
+                "temperature": 0.1,
+                "response_mime_type": "application/json"
+            }
+        )
+        
+        try:
+            result = json.loads(response.text)
+            return result
+        except json.JSONDecodeError:
+            return {
+                "sql": None,
+                "confidence": 0.0,
+                "error": "Failed to parse LLM response"
+            }
+    
+    @traceable(
+        name="llm_generate_answer",
+        tags=["step:answer_generation", "chotu"],
+        project_name=ENV_SETTINGS.LANGSMITH_PROJECT
+    )
+    def generate_answer_from_results(
+        self,
+        user_question: str,
+        sql_query: str,
+        sql_results: list,
+        system_context: Dict[str, Any],
+        user_id: str
+    ) -> str:
+        """
+        Generate natural language answer from SQL results
+        Returns: Natural language explanation
+        """
+        
+        prompt = self._build_answer_generation_prompt(
+            user_question,
+            sql_query,
+            sql_results,
+            system_context
+        )
+        
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config={
+                "temperature": 0.3
+            }
+        )
+        
+        return response.text.strip()
+    
+    def _build_sql_generation_prompt(
+        self,
+        user_question: str,
+        system_context: Dict[str, Any]
+    ) -> str:
+        """Build prompt for SQL generation"""
+        
+        schema_info = """
+Database Schema:
 
-#         Expected Output:
-#         ```json
-#         []
-#         ```
-#         """}]
-#         },
-#         {
-#             "role": "user",
-#             "content": [
-#                 {"type": "text", "text": "What is the transaction details in the following email message?"},
-#                 {"type": "text", "text": final_message}
-#             ]
-#         }
-#     ]
-#     start_time = datetime.now()
-#     output = pipe(text_inputs=messages, max_new_tokens=2000)
-#     end_time = datetime.now()
-#     print(f"Processing time: {(end_time - start_time).total_seconds()}")
-#     return output[0]["generated_text"][-1]["content"]
+Table: transactions
+- id (String, PK)
+- amount (Float) - transaction amount
+- transaction_type (String) - type of transaction
+- source_identifier (String) - source of transaction
+- destination (String) - destination of transaction
+- mode (String) - payment mode (UPI, Card, etc)
+- date_time (DateTime) - UTC timestamp
+- email_sender (String) - email sender
+- email_id (String) - email ID
+- reference_number (String) - transaction reference
+- user_id (UUID, FK) - user ID
+- account_id (UUID, FK) - account ID
+- is_include_analytics (Boolean) - include in analytics
+
+Table: orders
+- id (UUID, PK)
+- order_id (String, unique) - vendor order ID
+- message_id (String) - email message ID
+- vendor (String) - vendor name (Amazon, Flipkart, etc)
+- order_date (DateTime) - UTC timestamp
+- currency (String) - currency code
+- sub_total (Float) - subtotal amount
+- total (Float) - total amount including discounts
+- account_id (UUID, FK) - account ID
+- created_at (DateTime) - record creation time
+
+Table: order_items
+- id (UUID, PK)
+- order_id (UUID, FK) - references orders.id
+- account_id (UUID, FK) - account ID
+- name (String) - item name
+- item_type (String) - type of item
+- quantity (Float) - quantity ordered
+- unit_type (String) - unit measurement
+- unit_price (Float) - price per unit
+- total (Float) - total price for item
+"""
+        
+        prompt = f"""You are a SQL query generator for a financial transaction database.
+
+{schema_info}
+
+Context:
+- User ID: {system_context['userId']}
+- Timezone: {system_context['timezone']}
+- Today's Date: {system_context['today']}
+
+STRICT RULES:
+1. Generate SELECT queries ONLY
+2. Use only the tables and columns defined above
+3. Always filter by userId = '{system_context['userId']}' in transactions table
+4. Always filter by account_id in orders/order_items (accounts belong to user)
+5. For date filters, use DATE() function or date_time/order_date columns
+6. Add LIMIT 20 for list queries (non-aggregate)
+7. Use proper SQL syntax for PostgreSQL
+8. If time period is mentioned (last month, this year), calculate dates
+9. Total amounts in orders.total already include discounts
+10. All dates are stored in UTC
+
+User Question: {user_question}
+
+Generate a SQL query and assign confidence:
+- 0.9-1.0: Clear, unambiguous question
+- 0.7-0.8: Minor ambiguity but answerable
+- 0.5-0.6: Significant ambiguity or missing info
+- < 0.5: Cannot generate reliable query
+
+Respond ONLY with valid JSON:
+{{
+  "sql": "SELECT ... FROM ... WHERE ...",
+  "confidence": 0.85,
+  "reasoning": "Brief explanation of query logic"
+}}
+
+If confidence < 0.6, set sql to null and explain what information is needed.
+"""
+        
+        return prompt
+    
+    def _build_answer_generation_prompt(
+        self,
+        user_question: str,
+        sql_query: str,
+        sql_results: list,
+        system_context: Dict[str, Any]
+    ) -> str:
+        """Build prompt for answer generation"""
+        
+        results_summary = f"{len(sql_results)} rows returned"
+        if len(sql_results) <= 10:
+            results_str = json.dumps(sql_results, indent=2, default=str)
+        else:
+            results_str = json.dumps(sql_results[:10], indent=2, default=str) + f"\n... ({len(sql_results) - 10} more rows)"
+        
+        prompt = f"""You are a financial assistant explaining query results to a user.
+
+User Question: {user_question}
+
+SQL Query Executed:
+{sql_query}
+
+Results ({results_summary}):
+{results_str}
+
+Context:
+- Timezone: {system_context['timezone']}
+
+STRICT RULES:
+1. Provide a short, factual answer (2-4 sentences)
+2. Do NOT show SQL queries to the user
+3. Do NOT show raw data rows
+4. Do NOT calculate or guess numbers - use only the data provided
+5. If results show totals, state them clearly with currency
+6. If no results, say "No data found for this query"
+7. If results are incomplete, mention it briefly
+8. Use natural language, be conversational
+9. Always append ₹ to the amounts
+10. Currency will always be INR (symbol: ₹)
+
+Generate a natural language answer that directly addresses the user's question.
+"""
+        
+        return prompt
+
+
+# Singleton instance
+llm_service = LLMService()
