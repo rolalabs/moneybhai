@@ -45,8 +45,8 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
                     email_sender=transaction.emailSender,
                     email_id=transaction.emailId,
                     date_time=transaction.date_time,
-                    userId=transactionsPayload.userId,
-                    accountId=transactionsPayload.accountId,
+                    user_id=transactionsPayload.userId,
+                    account_id=transactionsPayload.accountId,
                     is_include_analytics=True
                 )
                 txn_orm_list.append(txn)
