@@ -9,6 +9,7 @@ import requests
 from langsmith.run_helpers import get_current_run_tree
 from googleapiclient.discovery import Resource
 from packages.models import EmailSanitized, OrdersListIntentModel, Transaction
+from packages.enums import TransactionCategory
 from worker.connectors import ENV_SETTINGS, VERTEXT_CLIENT
 from worker.log import setup_logger
 
@@ -368,9 +369,21 @@ class AIManager:
         - Do NOT infer missing data from other emails
         - Maintain the SAME ORDER as input
 
-        **Strict Output Requirements:**
-        * **Absolutely no conversational text, explanations, or markdown formatting (e.g., ```json) outside the JSON list itself.**
-        * The response must begin with `[` and end with `]`.
+        Additional task:
+        - For EACH item in the items table, determine a transaction category.
+
+        Category rules:
+        - Categories must be chosen ONLY from the following fixed list:
+        {',\n        '.join([cat.value for cat in TransactionCategory])}
+        - Categorization must be done ONLY at the item level.
+        - Use the item name, description, and merchant context to determine the category.
+        - Do NOT infer categories beyond the information present in the email.
+        - If the category is unclear or ambiguous, use OTHER.
+        - Do NOT invent new categories.
+
+        Strict Output Requirements:
+        - Absolutely no conversational text, explanations, or markdown formatting outside the JSON list itself.
+        - The response must begin with `[` and end with `]`.
 
         Rules:
         - Output ONLY valid JSON
@@ -382,7 +395,7 @@ class AIManager:
 
         OutputSchema:
         {OrdersListIntentModel.model_json_schema()}
-        
+
         """
         final_prompt = BASE_PROMPT + "\n\n" + "\n\n".join(message_to_parse_list)
         

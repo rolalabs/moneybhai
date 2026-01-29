@@ -2,6 +2,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
+from packages.enums import TransactionCategory
+
 class Transaction(BaseModel):
     id: Optional[str] = None
     amount: Optional[float] = None
@@ -37,6 +39,7 @@ class OrderItemsIntentModel(BaseModel):
     unitType: Optional[str] = Field(None, description="Unit of the item quantity like pcs, kg, gms, liters, etc.")
     unitPrice: Optional[float] = Field(None, description="Unit price of the item or how much for each item")
     total: Optional[float] = Field(None, description="Total price of the item as per the receipt")
+    category: Optional[str] = Field(TransactionCategory.OTHER.value, description="Category of the item like groceries, electronics, clothing, etc.")
 
 class OrdersIntentModel(BaseModel):
     model_config = ConfigDict(extra='ignore')
