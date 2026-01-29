@@ -27,27 +27,35 @@ def get_date_range_for_budget(budget_type: str, reference_date: datetime, user_t
     if reference_date.tzinfo is None:
         reference_date = reference_date.replace(tzinfo=timezone.utc)
     
+    # Convert to user's timezone (IST = UTC+5:30)
+    ist_offset = timedelta(hours=5, minutes=30)
+    reference_date_ist = reference_date + ist_offset
+    
     if budget_type == BudgetType.DAILY:
-        start_date = reference_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date + timedelta(days=1)
+        start_date_ist = reference_date_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date_ist = start_date_ist + timedelta(days=1)
     
     elif budget_type == BudgetType.WEEKLY:
         # Calendar week: Monday (0) to Sunday (6)
-        days_since_monday = reference_date.weekday()
-        start_date = (reference_date - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date + timedelta(days=7)
+        days_since_monday = reference_date_ist.weekday()
+        start_date_ist = (reference_date_ist - timedelta(days=days_since_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date_ist = start_date_ist + timedelta(days=7)
     
     elif budget_type == BudgetType.MONTHLY:
         # First day of the month
-        start_date = reference_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_date_ist = reference_date_ist.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         # First day of next month
-        if start_date.month == 12:
-            end_date = start_date.replace(year=start_date.year + 1, month=1)
+        if start_date_ist.month == 12:
+            end_date_ist = start_date_ist.replace(year=start_date_ist.year + 1, month=1)
         else:
-            end_date = start_date.replace(month=start_date.month + 1)
+            end_date_ist = start_date_ist.replace(month=start_date_ist.month + 1)
     
     else:
         raise ValueError(f"Invalid budget_type: {budget_type}. Must be one of {[e.value for e in BudgetType]}")
+    
+    # Convert back to UTC for database queries
+    start_date = start_date_ist - ist_offset
+    end_date = end_date_ist - ist_offset
     
     return start_date, end_date
 
