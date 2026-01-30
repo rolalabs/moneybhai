@@ -27,7 +27,14 @@ async def get_transaction(id: str, db: Session = Depends(get_db)):
 async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPayload, db: Session = Depends(get_db)):
     """Bulk insert transactions into the database."""
     try:
-        logger.info(f"Processing {len(transactionsPayload.transactions)} transactions for bulk insert")
+        logger.info(
+            f"Processing {len(transactionsPayload.transactions)} transactions for bulk insert",
+            extra={
+                "total_count": len(transactionsPayload.transactions),
+                "account_id": transactionsPayload.accountId,
+                "user_id": transactionsPayload.userId
+            }
+        )
         
         # Create ORM objects for type safety
         txn_orm_list = []
@@ -76,7 +83,17 @@ async def bulk_insert_transactions(transactionsPayload: TransactionBulkInsertPay
             inserted_count = result.rowcount
             skipped_count = len(txn_orm_list) - inserted_count
         
-        logger.info(f"Inserted {inserted_count} transactions, skipped {skipped_count} duplicates, failed {failed_count}")
+        logger.info(
+            f"Inserted {inserted_count} transactions, skipped {skipped_count} duplicates, failed {failed_count}",
+            extra={
+                "inserted_count": inserted_count,
+                "skipped_count": skipped_count,
+                "failed_count": failed_count,
+                "total_count": len(transactionsPayload.transactions),
+                "account_id": transactionsPayload.accountId,
+                "user_id": transactionsPayload.userId
+            }
+        )
         
         return JSONResponse(
             status_code=200,

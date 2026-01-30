@@ -14,7 +14,14 @@ logger = setup_logger(__name__)
 @router.post("/bulk-insert")
 async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db: Session = Depends(get_db)):
     """Insert orders one by one into the database."""
-    logger.info(f"Processing {len(orderPayloadList.orders)} orders for insertion")
+    logger.info(
+        f"Processing {len(orderPayloadList.orders)} orders for insertion",
+        extra={
+            "total_count": len(orderPayloadList.orders),
+            "account_id": orderPayloadList.accountId,
+            "user_id": orderPayloadList.userId
+        }
+    )
     
     inserted_count = 0
     skipped_count = 0
@@ -84,7 +91,17 @@ async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db
             logger.warning(f"Failed to process order at index {idx}: {e}. Order ID: {order.orderId}")
             continue
     
-    logger.info(f"Insert completed: {inserted_count} inserted, {skipped_count} skipped, {failed_count} failed")
+    logger.info(
+        f"Insert completed: {inserted_count} inserted, {skipped_count} skipped, {failed_count} failed",
+        extra={
+            "inserted_count": inserted_count,
+            "skipped_count": skipped_count,
+            "updated_count": updated_count,
+            "failed_count": failed_count,
+            "total_count": len(orderPayloadList.orders),
+            "account_id": orderPayloadList.accountId
+        }
+    )
     return {
         "inserted": inserted_count,
         "skipped": skipped_count,

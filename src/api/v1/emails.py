@@ -40,7 +40,15 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
             )
         
 
-        logger.info(f"Inserting {len(payload.emails)} emails into the database for email: {payload.emailId}")
+        logger.info(
+            f"Inserting {len(payload.emails)} emails into the database for email: {payload.emailId}",
+            extra={
+                "total_count": len(payload.emails),
+                "email_id": payload.emailId,
+                "account_id": payload.accountId,
+                "user_id": payload.userId
+            }
+        )
 
         # Create ORM objects for type safety
         email_orm_list = []
@@ -74,7 +82,17 @@ async def insert_bulk_emails(payload: EmailBulkInsertPayload, db: Session = Depe
         inserted_count = result.rowcount
         skipped_count = len(payload.emails) - inserted_count
 
-        logger.info(f"Inserted {inserted_count} emails, skipped {skipped_count} duplicates.")
+        logger.info(
+            f"Inserted {inserted_count} emails, skipped {skipped_count} duplicates.",
+            extra={
+                "inserted_count": inserted_count,
+                "skipped_count": skipped_count,
+                "total_count": len(payload.emails),
+                "email_id": email.emailId,
+                "account_id": payload.accountId,
+                "user_id": payload.userId
+            }
+        )
         return JSONResponse(
             status_code=200,
             content={
