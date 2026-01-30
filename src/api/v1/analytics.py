@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 
+from packages.enums import TransactionCategory
 from src.core.database import get_db
 from src.modules.transactions.schema import TransactionORM
 from src.modules.users.schema import UsersORM
@@ -192,7 +193,8 @@ async def get_expenses_by_category(
             func.sum(OrderItemsORM.total).label('total_spent')
         ).filter(
             OrderItemsORM.account_id.in_(account_id_list),
-            OrderItemsORM.total.isnot(None)
+            OrderItemsORM.total.isnot(None),
+            OrderItemsORM.category.isnot(TransactionCategory.INVESTMENT.value)
         ).group_by(
             OrderItemsORM.category
         ).order_by(
