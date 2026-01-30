@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from packages.utils import convert_iso_to_datetime
 from src.core.database import get_db
 from sqlalchemy.orm import Session
 from src.modules.orders.schema import OrdersORM, OrderItemsORM
 from src.modules.orders.models import OrdersBulkInsertPayload
+from src.modules.accounts.schema import AccountsORM
 from src.utils.log import setup_logger
 
 router = APIRouter(prefix="/users/{user_id}/orders", tags=["orders"])
@@ -109,3 +111,89 @@ async def bulk_insert_transactions(user_id: str, orderPayloadList: OrdersBulkIns
         "failed": failed_count
     }
 
+
+@router.get("/")
+async def get_orders_by_user(
+    user_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all orders for a specific user.
+    
+    Args:
+        user_id: User ID
+        db: Database session
+    
+    Returns:
+        List of orders with their items
+    """
+    try:
+        # Get all account IDs for this user
+        account_ids = db.query(AccountsORM.id).filter(
+            AccountsORM.userId == user_id
+        ).all()
+        
+        if not account_ids:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "No accounts found for user"}
+            )
+        
+        account_id_list = [acc.id for acc in account_ids]
+        
+        # Query orders and items in a single JOIN query
+        results = db.query(OrdersORM, OrderItemsORM).outerjoin(
+            OrderItemsORM, OrdersORM.id == OrderItemsORM.order_id
+        ).filter(
+            OrdersORM.account_id.in_(account_id_list)
+        ).order_by(OrdersORM.order_date.desc()).all()
+        
+        # Group items by order
+        orders_map = {}
+        order: OrdersORM
+        item: OrderItemsORM
+        for order, item in results:
+            order_id = order.order_id
+            if order_id not in orders_map:
+                orders_map[order_id] = {
+                    "orderId": order.order_id,
+                    "messageId": order.message_id,
+                    "vendor": order.vendor,
+                    "orderDate": order.order_date.isoformat() if order.order_date else None,
+                    "currency": order.currency,
+                    "subTotal": order.sub_total,
+                    "total": order.total,
+                    "accountId": str(order.account_id),
+                    "createdAt": order.created_at.isoformat() if order.created_at else None,
+                    "items": []
+                }
+            
+            if item:
+                orders_map[order_id]["items"].append({
+                    "id": str(item.id),
+                    "name": item.name,
+                    "category": item.category,
+                    "itemType": item.item_type,
+                    "quantity": item.quantity,
+                    "unitType": item.unit_type,
+                    "unitPrice": item.unit_price,
+                    "total": item.total
+                })
+        
+        orders_data = list(orders_map.values())
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "userId": user_id,
+                "totalOrders": len(orders_data),
+                "orders": orders_data
+            }
+        )
+        
+    except Exception as e:
+        logger.exception(f"Error fetching orders for userId {user_id}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to fetch orders", "error": str(e)}
+        )
