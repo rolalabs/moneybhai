@@ -71,6 +71,7 @@ async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db
                     item_type=item.itemType,
                     quantity=item.quantity,
                     unit_price=item.unitPrice,
+                    category=item.category,
                     unit_type=item.unitType,
                     total=item.total,
                 )
