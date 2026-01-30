@@ -194,7 +194,7 @@ async def get_expenses_by_category(
         ).filter(
             OrderItemsORM.account_id.in_(account_id_list),
             OrderItemsORM.total.isnot(None),
-            OrderItemsORM.category.isnot(TransactionCategory.INVESTMENT.value)
+            OrderItemsORM.category != TransactionCategory.INVESTMENT.value
         ).group_by(
             OrderItemsORM.category
         ).order_by(
