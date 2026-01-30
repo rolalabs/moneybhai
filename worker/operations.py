@@ -355,6 +355,7 @@ class AIManager:
             message_to_parse_list.append(body)
         
         run = get_current_run_tree()
+        category_list = ',\n        '.join([cat.value for cat in TransactionCategory])
         BASE_PROMPT = f"""
         You are an expert data extraction assistant specialized in order confirmation emails from e-commerce platforms.
 
@@ -374,7 +375,7 @@ class AIManager:
 
         Category rules:
         - Categories must be chosen ONLY from the following fixed list:
-        {',\n        '.join([cat.value for cat in TransactionCategory])}
+        {category_list}
         - Categorization must be done ONLY at the item level.
         - Use the item name, description, and merchant context to determine the category.
         - Do NOT infer categories beyond the information present in the email.
