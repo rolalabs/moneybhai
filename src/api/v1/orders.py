@@ -6,13 +6,13 @@ from src.modules.orders.schema import OrdersORM, OrderItemsORM
 from src.modules.orders.models import OrdersBulkInsertPayload
 from src.utils.log import setup_logger
 
-router = APIRouter(prefix="/orders", tags=["orders"])
+router = APIRouter(prefix="/users/{user_id}/orders", tags=["orders"])
 logger = setup_logger(__name__)
 
 
 # create an endpoint to insert bulk transactions
 @router.post("/bulk-insert")
-async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db: Session = Depends(get_db)):
+async def bulk_insert_transactions(user_id: str, orderPayloadList: OrdersBulkInsertPayload, db: Session = Depends(get_db)):
     """Insert orders one by one into the database."""
     logger.info(
         f"Processing {len(orderPayloadList.orders)} orders for insertion",
@@ -108,3 +108,4 @@ async def bulk_insert_transactions(orderPayloadList: OrdersBulkInsertPayload, db
         "updated": updated_count,
         "failed": failed_count
     }
+

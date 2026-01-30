@@ -523,7 +523,7 @@ class AIManager:
         Send in batch of 50
         '''
         response = requests.post(
-            ENV_SETTINGS.MB_BACKEND_API_URL + 'api/v1/orders/bulk-insert',
+            ENV_SETTINGS.MB_BACKEND_API_URL + f'api/v1/users/{self.userId}/orders/bulk-insert',
             headers={'Content-Type': 'application/json'},
             json={
                 'orders': orders_list,
