@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from src.core.database import get_db
 from src.modules.transactions.schema import TransactionORM
 from src.modules.users.schema import UsersORM
+from src.modules.orders.schema import OrderItemsORM
+from src.modules.accounts.schema import AccountsORM
 from src.utils.log import setup_logger
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -152,4 +154,76 @@ async def get_average_expenditure(
         return JSONResponse(
             status_code=500,
             content={"message": "Failed to fetch average expenditure", "error": str(e)}
+        )
+
+
+@router.get("/{userId}/expenses-by-category")
+async def get_expenses_by_category(
+    userId: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get total expenses grouped by category for a user.
+    
+    Args:
+        userId: User ID
+        db: Database session
+    
+    Returns:
+        Expenses grouped by category with totals
+    """
+    try:
+        # Get all account IDs for this user
+        account_ids = db.query(AccountsORM.id).filter(
+            AccountsORM.userId == userId
+        ).all()
+        
+        if not account_ids:
+            return JSONResponse(
+                status_code=404,
+                content={"message": "No accounts found for user"}
+            )
+        
+        account_id_list = [acc.id for acc in account_ids]
+        
+        # Query to get sum of totals grouped by category
+        results = db.query(
+            OrderItemsORM.category,
+            func.sum(OrderItemsORM.total).label('total_spent')
+        ).filter(
+            OrderItemsORM.account_id.in_(account_id_list),
+            OrderItemsORM.total.isnot(None)
+        ).group_by(
+            OrderItemsORM.category
+        ).order_by(
+            func.sum(OrderItemsORM.total).desc()
+        ).all()
+        
+        # Format response data
+        data = [
+            {
+                "category": row.category,
+                "totalSpent": float(row.total_spent) if row.total_spent else 0.0
+            }
+            for row in results
+        ]
+        
+        # Calculate overall total
+        overall_total = sum(item["totalSpent"] for item in data)
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "userId": userId,
+                "currency": "INR",
+                "totalExpenses": overall_total,
+                "expensesByCategory": data
+            }
+        )
+        
+    except Exception as e:
+        logger.exception(f"Error fetching expenses by category for userId {userId}: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Failed to fetch expenses by category", "error": str(e)}
         )
