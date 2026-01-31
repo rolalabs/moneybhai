@@ -146,7 +146,7 @@ async def get_orders_by_user(
             OrderItemsORM, OrdersORM.id == OrderItemsORM.order_id
         ).filter(
             OrdersORM.account_id.in_(account_id_list)
-        ).order_by(OrdersORM.order_date.desc()).all()
+        ).order_by(OrdersORM.created_at.desc()).all()
         
         # Group items by order
         orders_map = {}
