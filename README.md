@@ -27,4 +27,5 @@ STEP 6: Backend stores refresh token
         ↓
         Backend can fetch emails forever
 
+
 STEP 7: Android just calls your backend
